@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AdminConsultationController;
 use App\Http\Controllers\Api\AdminDashboardController;
 use App\Http\Controllers\Api\AdminInventoryController;
 use App\Http\Controllers\Api\AdminInvoiceController;
+use App\Http\Controllers\Api\AdminNotificationController;
 use App\Http\Controllers\Api\AdminPatientController;
 use App\Http\Controllers\Api\AdminServiceController;
 use App\Http\Controllers\Api\AdminSettingController;
@@ -45,6 +46,12 @@ Route::prefix('admin')->group(function () {
         // قوائم مرجعية متاحة لكل الموظفين (اختيار طبيب/خدمة في النماذج)
         Route::get('doctors', [AdminStaffController::class, 'doctors']);
         Route::get('services', [AdminServiceController::class, 'index']);
+
+        // الإشعارات — متاحة لكل الموظفين
+        Route::get('notifications', [AdminNotificationController::class, 'index']);
+        Route::get('notifications/unread', [AdminNotificationController::class, 'unread']);
+        Route::post('notifications/read-all', [AdminNotificationController::class, 'markAll']);
+        Route::patch('notifications/{notification}/read', [AdminNotificationController::class, 'markRead']);
 
         // المرضى
         Route::middleware('perm:patients')->group(function () {

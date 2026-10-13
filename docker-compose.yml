@@ -36,6 +36,26 @@ services:
     container_name: clinic-api
     restart: unless-stopped
     working_dir: /app
+    environment:
+      APP_NAME: "Ayadati"
+      APP_ENV: production
+      APP_KEY: "base64:n5VrjDll3xonAaLbsfwflS0w4rM3NXTvaZ+NqknU3uU="
+      APP_DEBUG: "false"
+      APP_URL: "http://localhost:8094"
+      APP_LOCALE: ar
+      APP_FALLBACK_LOCALE: en
+      DB_CONNECTION: mysql
+      DB_HOST: clinic-db
+      DB_PORT: "3306"
+      DB_DATABASE: clinic
+      DB_USERNAME: root
+      DB_PASSWORD: secret
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
+      LOG_CHANNEL: stderr
+      SUPER_ADMIN_EMAIL: "owner@clinic.sa"
+      SUPER_ADMIN_PASSWORD: "Owner2026!"
     volumes:
       - ./api:/app
     ports:

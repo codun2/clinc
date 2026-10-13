@@ -8,6 +8,7 @@ use App\Models\Clinic;
 use App\Models\Patient;
 use App\Models\Service;
 use App\Models\User;
+use App\Support\Notify;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -111,6 +112,17 @@ class AppointmentController extends Controller
                 'source'       => 'online',
             ]);
         });
+
+        // إشعار لطاقم العيادة بوجود حجز أونلاين جديد
+        Notify::clinic(
+            $clinic->id,
+            'booking',
+            'حجز أونلاين جديد',
+            $data['name'].' · '.$appointment->scheduled_at->format('Y-m-d H:i'),
+            'calendar-plus',
+            'appointments',
+            ['appointment_id' => $appointment->id],
+        );
 
         return response()->json([
             'message'     => 'تم الحجز — سيصلك تأكيد برسالة نصية.',

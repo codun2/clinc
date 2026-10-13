@@ -23,3 +23,6 @@ node_modules
 # User-uploaded runtime data (images). Keep the folder, not its contents.
 /api/public/uploads/*
 !/api/public/uploads/.gitkeep
+
+# Claude Code local settings
+.claude/settings.local.json

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Clinic;
 use App\Models\Setting;
 use App\Models\User;
+use App\Support\Notify;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -112,6 +113,16 @@ class ClinicRegistrationController extends Controller
 
             return $clinic;
         });
+
+        // إشعار لصاحب المنصّة بطلب تسجيل جديد بانتظار الاعتماد
+        Notify::platform(
+            'clinic',
+            'طلب تسجيل عيادة جديدة',
+            $clinic->name.' — بانتظار الاعتماد',
+            'building-plus',
+            'clinics',
+            ['clinic_id' => $clinic->id],
+        );
 
         return response()->json([
             'message' => 'تم استلام طلب تسجيل عيادتك. سيتم تفعيلها بعد مراجعة إدارة المنصّة. / '
