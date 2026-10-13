@@ -47,6 +47,17 @@
   </main>
 </div>
 
+<div id="notif-widget" class="notif-widget">
+  <button id="notif-bell" class="notif-bell" aria-label="الإشعارات" title="الإشعارات">
+    <i class="ti ti-bell"></i>
+    <span class="notif-count" id="notif-count" hidden>0</span>
+  </button>
+  <div class="notif-panel hidden" id="notif-panel">
+    <div class="notif-head"><b>الإشعارات</b><span class="link" id="notif-readall">تعليم الكل كمقروء</span></div>
+    <div class="notif-list" id="notif-list"><div class="empty">—</div></div>
+  </div>
+</div>
+
 <div id="modal-root"></div>
 
 <script src="/assets/api.js"></script>
