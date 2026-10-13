@@ -241,30 +241,54 @@ Pages.invoices = async (el, state = {}) => {
       return `<tr><td>#${esc(inv.number)}</td><td>${esc(inv.patient?.name || '—')}</td><td>${dateOf(inv.created_at)}</td>
       <td>${inv.method ? PAY_METHOD[inv.method] : '—'}</td><td><b>${money(inv.total)} ريال</b></td>
       <td><span class="badge ${st.cls}">${st.label}</span></td>
-      <td>${inv.status === 'pending' ? `<button class="btn btn-soft btn-sm" data-pay="${inv.id}">تحصيل</button>` : ''}</td></tr>`;
+      <td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" data-print="${inv.id}" title="طباعة"><i class="ti ti-printer"></i></button>${inv.status === 'pending' ? ` <button class="btn btn-soft btn-sm" data-pay="${inv.id}">تحصيل</button>` : ''}</td></tr>`;
     }).join('')}
   </table>` : '<div class="empty">لا فواتير</div>'}</div>`;
   el.querySelectorAll('.chip[data-s]').forEach((c) => c.onclick = () => Pages.invoices(el, { status: c.dataset.s }));
   el.querySelector('#new-inv').onclick = () => InvoiceForm();
   el.querySelectorAll('[data-pay]').forEach((b) => b.onclick = () => PayInvoice(b.dataset.pay, () => Pages.invoices(el, { status })));
+  el.querySelectorAll('[data-print]').forEach((b) => b.onclick = () => { const inv = list.find((x) => x.id == b.dataset.print); if (inv) printInvoice(inv); });
 };
 
 // ============ التقارير ============
 Pages.reports = async (el) => {
-  const d = await API.get('/admin/invoices');
-  const m = d.stats.monthly || [];
-  const max = Math.max(1, ...m.map((x) => x.total));
+  const d = await API.get('/admin/reports');
+  const m = d.monthly || [];
+  const maxRev = Math.max(1, ...m.map((x) => x.revenue));
   const monName = (ym) => new Date(ym + '-01').toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { month: 'short' });
+  const a = d.appointments, mt = d.methods;
+  const methodMax = Math.max(1, mt.cash, mt.card, mt.transfer);
+  const docMax = Math.max(1, ...d.doctors.map((x) => x.visits));
   el.innerHTML = `
   <div class="topbar"><div><h1>التقارير</h1><div class="sub">أداء العيادة — آخر 6 أشهر</div></div></div>
   <div class="kpis">
-    <div class="kpi"><div class="t"><i class="ti ti-cash"></i> إجمالي 6 أشهر</div><div class="v">${money(m.reduce((a, x) => a + x.total, 0))}</div><div class="d">ريال</div></div>
-    <div class="kpi"><div class="t"><i class="ti ti-receipt"></i> إيراد هذا الشهر</div><div class="v">${money(d.stats.month_total)}</div><div class="d">${d.stats.month_count} فاتورة</div></div>
-    <div class="kpi"><div class="t"><i class="ti ti-clock-exclamation"></i> معلّق إجمالي</div><div class="v" style="color:var(--danger)">${money(d.stats.pending_total)}</div><div class="d warn">${d.stats.pending_count} فاتورة</div></div>
+    <div class="kpi"><div class="t"><i class="ti ti-cash"></i> إجمالي 6 أشهر</div><div class="v">${money(m.reduce((s, x) => s + x.revenue, 0))}</div><div class="d">ريال</div></div>
+    <div class="kpi"><div class="t"><i class="ti ti-receipt"></i> إيراد هذا الشهر</div><div class="v">${money(d.totals.revenue_month)}</div><div class="d">ريال</div></div>
+    <div class="kpi"><div class="t"><i class="ti ti-clock-exclamation"></i> معلّق إجمالي</div><div class="v" style="color:var(--danger)">${money(d.totals.pending_total)}</div><div class="d warn">غير محصّل</div></div>
+    <div class="kpi"><div class="t"><i class="ti ti-users"></i> إجمالي المرضى</div><div class="v">${d.totals.patients_total}</div><div class="d">ملف</div></div>
   </div>
   <div class="card">
     <div class="card-h"><b>الإيرادات الشهرية (ريال)</b></div>
-    <div class="cols">${m.map((x) => `<div class="col ${x.total === max ? 'hot' : ''}"><span style="height:${Math.max(4, Math.round(x.total / max * 100))}%"></span><em>${monName(x.month)}<br>${money(x.total)}</em></div>`).join('')}</div>
+    <div class="cols">${m.map((x) => `<div class="col ${x.revenue === maxRev ? 'hot' : ''}"><span style="height:${Math.max(4, Math.round(x.revenue / maxRev * 100))}%"></span><em>${monName(x.month)}<br>${money(x.revenue)}</em></div>`).join('')}</div>
+  </div>
+  <div class="grid2" style="margin-top:14px">
+    <div class="card"><div class="card-h"><b>مواعيد هذا الشهر</b></div><div class="pad">
+      ${[['إجمالي', a.total, 'var(--teal-dark)'], ['مكتملة', a.completed, 'var(--ok)'], ['لم يحضر', a.no_show, 'var(--danger)'], ['ملغاة', a.cancelled, 'var(--muted)'], ['أونلاين', a.online, 'var(--info)']].map(([l, v, c]) =>
+        `<div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">${l}</span><b style="color:${c}">${v}</b></div>`).join('')}
+    </div></div>
+    <div class="card"><div class="card-h"><b>طرق الدفع هذا الشهر</b></div><div class="pad">
+      ${[['نقدي', mt.cash], ['شبكة (مدى)', mt.card], ['تحويل بنكي', mt.transfer]].map(([l, v]) =>
+        `<div class="bar-row"><div class="lbl"><span>${l}</span><span>${money(v)} ريال</span></div><div class="bar"><span style="width:${Math.round(v / methodMax * 100)}%"></span></div></div>`).join('')}
+    </div></div>
+  </div>
+  <div class="grid2" style="margin-top:14px">
+    <div class="card"><div class="card-h"><b>أكثر الخدمات دخلاً</b></div>
+      ${d.top_services.length ? `<table><tr><th>الخدمة</th><th>عدد</th><th>الإجمالي</th></tr>
+      ${d.top_services.map((s) => `<tr><td>${esc(s.name)}</td><td>${s.count}</td><td><b>${money(s.total)} ريال</b></td></tr>`).join('')}</table>` : '<div class="empty">لا بيانات</div>'}
+    </div>
+    <div class="card"><div class="card-h"><b>أداء الأطباء (كشوفات الشهر)</b></div><div class="pad">
+      ${d.doctors.length ? d.doctors.map((x) => `<div class="bar-row"><div class="lbl"><span>${esc(x.name)}</span><span>${x.visits}</span></div><div class="bar"><span style="width:${Math.round(x.visits / docMax * 100)}%"></span></div></div>`).join('') : '<div class="empty">لا بيانات</div>'}
+    </div></div>
   </div>`;
 };
 
@@ -277,16 +301,17 @@ Pages.staff = async (el) => {
   el.innerHTML = `
   <div class="topbar"><div><h1>الأطباء والموظفون</h1><div class="sub">${d.staff.length} مستخدمين</div></div>
     <div class="top-actions"><button class="btn btn-primary" id="new-staff"><i class="ti ti-user-plus"></i> إضافة مستخدم</button></div></div>
-  <div class="grid3">${doctors.map((u) => `<div class="card pad" style="text-align:center">
+  <div class="grid3">${doctors.map((u) => `<div class="card pad" data-uid="${u.id}" style="text-align:center;cursor:pointer">
     <div class="avatar" style="width:56px;height:56px;font-size:17px;margin:4px auto 10px">${esc(initials(u.name))}</div>
     <b>${esc(u.name)}</b><div style="font-size:12px;color:var(--muted)">${esc(u.title)}</div>
     <div style="display:flex;gap:6px;justify-content:center;margin-top:10px"><span class="badge b-teal">${u.role === 'admin' ? 'مدير' : 'طبيب'}</span><span class="badge ${u.status === 'active' ? 'b-ok' : 'b-mut'}">${u.status === 'active' ? 'نشط' : 'موقوف'}</span></div>
   </div>`).join('') || '<div class="empty">لا أطباء</div>'}</div>
   <div class="card" style="margin-top:16px"><div class="card-h"><b>بقية الفريق</b></div>
     ${others.length ? `<table><tr><th>الاسم</th><th>الدور</th><th>البريد</th><th>الحالة</th></tr>
-    ${others.map((u) => `<tr><td><div class="cell-p"><div class="avatar">${esc(initials(u.name))}</div>${esc(u.name)}</div></td><td>${roleName(u)}</td><td style="direction:ltr;text-align:right">${esc(u.email)}</td><td><span class="badge ${u.status === 'active' ? 'b-ok' : 'b-mut'}">${u.status === 'active' ? 'نشط' : 'موقوف'}</span></td></tr>`).join('')}
+    ${others.map((u) => `<tr data-uid="${u.id}" style="cursor:pointer"><td><div class="cell-p"><div class="avatar">${esc(initials(u.name))}</div>${esc(u.name)}</div></td><td>${roleName(u)}</td><td style="direction:ltr;text-align:right">${esc(u.email)}</td><td><span class="badge ${u.status === 'active' ? 'b-ok' : 'b-mut'}">${u.status === 'active' ? 'نشط' : 'موقوف'}</span></td></tr>`).join('')}
     </table>` : '<div class="empty">—</div>'}</div>`;
-  el.querySelector('#new-staff').onclick = () => toast('إضافة المستخدمين — قيد الربط');
+  el.querySelector('#new-staff').onclick = () => StaffForm();
+  el.querySelectorAll('[data-uid]').forEach((n) => n.onclick = () => { const u = d.staff.find((x) => x.id == n.dataset.uid); if (u) StaffForm(u); });
 };
 
 // ============ الإعدادات ============
@@ -309,7 +334,7 @@ Pages.settings = async (el) => {
       </div></div>
       <div class="card"><div class="card-h"><b>الخدمات والأسعار</b><span class="link" id="add-svc">+ خدمة جديدة</span></div>
         <table><tr><th>الخدمة</th><th>القسم</th><th>السعر</th></tr>
-        ${svc.services.map((x) => `<tr><td>${esc(x.name)}</td><td>${esc(x.department || '—')}</td><td><b>${money(x.price)} ريال</b></td></tr>`).join('')}
+        ${svc.services.map((x) => `<tr data-svc="${x.id}" style="cursor:pointer"><td>${esc(x.name)}</td><td>${esc(x.department || '—')}</td><td><b>${money(x.price)} ريال</b></td></tr>`).join('')}
         </table>
       </div>
     </div>
@@ -336,5 +361,30 @@ Pages.settings = async (el) => {
     } catch (ex) { toast(ex.message, 'err'); } finally { e.target.disabled = false; }
   };
   el.querySelector('#copy-link').onclick = () => { navigator.clipboard?.writeText(location.origin + '/book.html'); toast('نُسخ الرابط'); };
-  el.querySelector('#add-svc').onclick = () => toast('إضافة خدمة — قيد الربط');
+  el.querySelector('#add-svc').onclick = () => ServiceForm(null, () => Pages.settings(el));
+  el.querySelectorAll('[data-svc]').forEach((r) => r.onclick = () => { const s = svc.services.find((x) => x.id == r.dataset.svc); if (s) ServiceForm(s, () => Pages.settings(el)); });
+};
+
+// ============ المخزون (الأدوية) ============
+Pages.inventory = async (el) => {
+  const d = await API.get('/admin/inventory');
+  const low = (m) => Number(m.quantity) <= Number(m.low_stock_threshold);
+  el.innerHTML = `
+  <div class="topbar">
+    <div><h1>المخزون</h1><div class="sub">${d.items.length} صنف · ${d.low_count} منخفض</div></div>
+    <div class="top-actions"><button class="btn btn-primary" id="new-med"><i class="ti ti-plus"></i> صنف جديد</button></div>
+  </div>
+  ${d.low_count ? `<div class="card pad" style="background:var(--warn-bg);border-color:#fcd34d;color:var(--warn);margin-bottom:14px;font-size:13px"><i class="ti ti-alert-triangle"></i> ${d.low_count} صنف وصل حد التنبيه — يُنصح بإعادة الطلب.</div>` : ''}
+  <div class="card">${d.items.length ? `<table>
+    <tr><th>الصنف</th><th>التصنيف</th><th>الكمية</th><th>السعر</th><th>الحالة</th></tr>
+    ${d.items.map((m) => `<tr data-med="${m.id}" style="cursor:pointer">
+      <td><b>${esc(m.name)}</b></td>
+      <td>${esc(m.category || '—')}</td>
+      <td>${Number(m.quantity)} ${esc(m.unit || '')}</td>
+      <td>${m.price ? money(m.price) + ' ريال' : '—'}</td>
+      <td>${low(m) ? '<span class="badge b-dgr">منخفض</span>' : '<span class="badge b-ok">متوفّر</span>'}</td>
+    </tr>`).join('')}
+  </table>` : '<div class="empty">لا أصناف — أضف أول صنف</div>'}</div>`;
+  el.querySelector('#new-med').onclick = () => MedicineForm(null, () => App.go('inventory'));
+  el.querySelectorAll('[data-med]').forEach((r) => r.onclick = () => { const m = d.items.find((x) => x.id == r.dataset.med); if (m) MedicineForm(m, () => App.go('inventory')); });
 };

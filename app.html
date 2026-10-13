@@ -21,6 +21,7 @@
     <div class="nav-item" data-page="appointments"><i class="ti ti-calendar-event"></i> المواعيد</div>
     <div class="nav-item" data-page="patients"><i class="ti ti-users"></i> المرضى</div>
     <div class="nav-item" data-page="invoices"><i class="ti ti-file-invoice"></i> الفواتير</div>
+    <div class="nav-item" data-page="inventory"><i class="ti ti-packages"></i> المخزون</div>
     <div class="nav-label">الإدارة</div>
     <div class="nav-item" data-page="reports"><i class="ti ti-chart-bar"></i> التقارير</div>
     <div class="nav-item" data-page="staff"><i class="ti ti-id-badge-2"></i> الأطباء والموظفون</div>
@@ -41,11 +42,14 @@
     <section class="page" id="page-patient"></section>
     <section class="page" id="page-consult"></section>
     <section class="page" id="page-invoices"></section>
+    <section class="page" id="page-inventory"></section>
     <section class="page" id="page-reports"></section>
     <section class="page" id="page-staff"></section>
     <section class="page" id="page-settings"></section>
   </main>
 </div>
+
+<button id="lang-toggle" class="lang-toggle" title="English / عربي">EN</button>
 
 <div id="notif-widget" class="notif-widget">
   <button id="notif-bell" class="notif-bell" aria-label="الإشعارات" title="الإشعارات">
@@ -61,6 +65,7 @@
 <div id="modal-root"></div>
 
 <script src="/assets/api.js"></script>
+<script src="/assets/i18n.js"></script>
 <script src="/assets/pages.js"></script>
 <script src="/assets/forms.js"></script>
 <script src="/assets/app.js"></script>

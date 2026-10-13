@@ -8,12 +8,14 @@ use App\Http\Controllers\Api\AdminInventoryController;
 use App\Http\Controllers\Api\AdminInvoiceController;
 use App\Http\Controllers\Api\AdminNotificationController;
 use App\Http\Controllers\Api\AdminPatientController;
+use App\Http\Controllers\Api\AdminReportController;
 use App\Http\Controllers\Api\AdminServiceController;
 use App\Http\Controllers\Api\AdminSettingController;
 use App\Http\Controllers\Api\AdminStaffController;
 use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\ClinicRegistrationController;
 use App\Http\Controllers\Api\Super\ClinicController;
+use App\Http\Controllers\Api\Super\NotificationController as SuperNotificationController;
 use App\Http\Controllers\Api\SuperAuthController;
 use Illuminate\Support\Facades\Route;
 
@@ -83,6 +85,7 @@ Route::prefix('admin')->group(function () {
             Route::post('invoices', [AdminInvoiceController::class, 'store']);
             Route::patch('invoices/{invoice}/pay', [AdminInvoiceController::class, 'pay']);
             Route::patch('invoices/{invoice}/cancel', [AdminInvoiceController::class, 'cancel']);
+            Route::get('reports', [AdminReportController::class, 'index']);
         });
 
         // الموظفون
@@ -122,6 +125,9 @@ Route::prefix('super')->group(function () {
     Route::middleware(['auth:sanctum', 'super'])->group(function () {
         Route::get('me', [SuperAuthController::class, 'me']);
         Route::post('logout', [SuperAuthController::class, 'logout']);
+
+        Route::get('notifications', [SuperNotificationController::class, 'index']);
+        Route::post('notifications/read-all', [SuperNotificationController::class, 'markAll']);
 
         Route::get('clinics', [ClinicController::class, 'index']);
         Route::post('clinics', [ClinicController::class, 'store']);

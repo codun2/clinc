@@ -36,6 +36,12 @@ const App = {
 
     App.loadBadges();
     App.setupNotifications();
+
+    // تبديل اللغة
+    const lt = document.getElementById('lang-toggle');
+    if (lt) { lt.textContent = I18N.label(); lt.onclick = () => I18N.toggle(); }
+    I18N.apply(document.body); // ترجمة الشِل (القائمة الجانبية) عند الإقلاع
+
     App.go(location.hash.replace('#', '') || 'dashboard');
   },
 
@@ -43,7 +49,7 @@ const App = {
     const u = App.me;
     const can = (k) => u.role === 'admin' || (u.permissions || []).includes(k);
     const show = { appointments: can('appointments'), patients: can('patients'), invoices: can('invoices'),
-      reports: can('invoices'), staff: can('staff'), settings: can('settings') };
+      inventory: can('inventory'), reports: can('invoices'), staff: can('staff'), settings: can('settings') };
     document.querySelectorAll('.nav-item[data-page]').forEach((n) => {
       const p = n.dataset.page;
       if (p !== 'dashboard' && show[p] === false) n.classList.add('hidden');
@@ -114,6 +120,7 @@ const App = {
     window.scrollTo({ top: 0 });
     try { await Pages[page](el, arg); }
     catch (ex) { el.innerHTML = `<div class="empty">تعذّر التحميل — ${esc(ex.message)}</div>`; }
+    I18N.apply(el); // ترجمة محتوى الصفحة عند اختيار الإنجليزية
   },
 
   logout() {
@@ -135,6 +142,7 @@ function openModal({ title, body, footer, onOpen, width }) {
   root.querySelector('#modal-x').onclick = close;
   root.querySelector('.overlay').onclick = (e) => { if (e.target.classList.contains('overlay')) close(); };
   onOpen?.(root, close);
+  I18N.apply(root); // ترجمة محتوى المودال عند اختيار الإنجليزية
   return close;
 }
 

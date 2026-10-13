@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="/assets/app.css">
 </head>
 <body>
+<button id="lang-toggle" title="English / عربي" style="position:fixed;top:14px;inset-inline-end:16px;z-index:60;height:38px;min-width:46px;padding:0 13px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--teal);cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;box-shadow:var(--shadow)">EN</button>
 <div class="auth">
   <div class="auth-side">
     <div class="mark"><i class="ti ti-heartbeat"></i></div>
@@ -32,8 +33,14 @@
   </div>
 </div>
 <script src="/assets/api.js"></script>
+<script src="/assets/i18n.js"></script>
 <script>
 if (API.token()) location.replace('/app.html');
+
+// زر تبديل اللغة
+const _lt = document.getElementById('lang-toggle');
+if (_lt) { _lt.textContent = I18N.label(); _lt.onclick = () => I18N.toggle(); }
+I18N.apply(document.body);
 
 document.getElementById('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();

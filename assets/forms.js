@@ -312,3 +312,158 @@ function PayInvoice(id, done) {
     },
   });
 }
+
+// ===== نموذج موظف / طبيب =====
+const PERM_LABELS = { appointments: 'المواعيد', patients: 'المرضى', consultations: 'الكشوفات', invoices: 'الفواتير', staff: 'الموظفون', inventory: 'المخزون', settings: 'الإعدادات' };
+function StaffForm(u = null) {
+  const edit = !!u;
+  const v = (k) => esc(u?.[k] || '');
+  const perms = u?.permissions || [];
+  const permBoxes = Object.entries(PERM_LABELS).map(([k, l]) =>
+    `<label style="display:flex;align-items:center;gap:6px;font-size:12.5px"><input type="checkbox" class="perm" value="${k}" ${perms.includes(k) ? 'checked' : ''} style="width:auto"> ${l}</label>`).join('');
+  openModal({
+    title: edit ? 'تعديل مستخدم' : 'إضافة مستخدم',
+    width: 540,
+    body: `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
+        <div class="field"><label>الاسم *</label><input id="s-name" value="${v('name')}"></div>
+        <div class="field"><label>المسمّى (للأطباء)</label><input id="s-title" value="${v('title')}" placeholder="طبيب باطنية…"></div>
+        <div class="field"><label>البريد *</label><input id="s-email" type="email" value="${v('email')}" ${edit ? 'disabled' : ''}></div>
+        <div class="field"><label>الجوال</label><input id="s-phone" value="${v('phone')}"></div>
+        <div class="field"><label>الدور</label><select id="s-role"><option value="staff" ${u?.role === 'staff' ? 'selected' : ''}>موظف</option><option value="admin" ${u?.role === 'admin' ? 'selected' : ''}>مدير</option></select></div>
+        ${edit
+          ? `<div class="field"><label>الحالة</label><select id="s-status"><option value="active" ${u?.status === 'active' ? 'selected' : ''}>نشط</option><option value="idle" ${u?.status === 'idle' ? 'selected' : ''}>موقوف</option></select></div>`
+          : `<div class="field"><label>كلمة المرور *</label><input id="s-pass" type="text" placeholder="6 أحرف على الأقل"></div>`}
+      </div>
+      <div class="field" style="margin-bottom:6px"><label>الصلاحيات (للموظف — المدير يملك كل شيء)</label>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:4px">${permBoxes}</div></div>`,
+    footer: `<button class="btn btn-primary" id="s-save">${edit ? 'حفظ' : 'إضافة'}</button>${edit ? '<button class="btn btn-ghost" id="s-del" style="color:var(--danger)">حذف</button>' : ''}<button class="btn btn-ghost" id="s-cancel">إلغاء</button>`,
+    onOpen: (root, close) => {
+      root.querySelector('#s-cancel').onclick = close;
+      const getPerms = () => [...root.querySelectorAll('.perm:checked')].map((c) => c.value);
+      root.querySelector('#s-save').onclick = async (e) => {
+        e.target.disabled = true;
+        try {
+          if (edit) {
+            await API.patch('/admin/staff/' + u.id, {
+              name: root.querySelector('#s-name').value, title: root.querySelector('#s-title').value || null,
+              phone: root.querySelector('#s-phone').value || null, role: root.querySelector('#s-role').value,
+              status: root.querySelector('#s-status').value, permissions: getPerms(),
+            });
+            toast('تم تحديث المستخدم');
+          } else {
+            await API.post('/admin/staff', {
+              name: root.querySelector('#s-name').value, email: root.querySelector('#s-email').value,
+              title: root.querySelector('#s-title').value || null, phone: root.querySelector('#s-phone').value || null,
+              role: root.querySelector('#s-role').value, password: root.querySelector('#s-pass').value, permissions: getPerms(),
+            });
+            toast('تم إضافة المستخدم');
+          }
+          close(); App.go('staff');
+        } catch (ex) { toast(ex.message, 'err'); e.target.disabled = false; }
+      };
+      if (edit) {
+        root.querySelector('#s-del').onclick = async () => {
+          if (!confirm('حذف المستخدم «' + u.name + '»؟')) return;
+          try { await API.del('/admin/staff/' + u.id); close(); toast('تم الحذف'); App.go('staff'); }
+          catch (ex) { toast(ex.message, 'err'); }
+        };
+      }
+    },
+  });
+}
+
+// ===== نموذج خدمة =====
+function ServiceForm(s = null, onDone) {
+  const edit = !!s;
+  openModal({
+    title: edit ? 'تعديل خدمة' : 'خدمة جديدة', width: 440,
+    body: `
+      <div class="field"><label>اسم الخدمة *</label><input id="sv-name" value="${esc(s?.name || '')}"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
+        <div class="field"><label>القسم</label><input id="sv-dep" value="${esc(s?.department || '')}" placeholder="باطنية…"></div>
+        <div class="field" style="margin-bottom:0"><label>السعر *</label><input id="sv-price" type="number" value="${s?.price ?? ''}"></div>
+      </div>`,
+    footer: `<button class="btn btn-primary" id="sv-save">${edit ? 'حفظ' : 'إضافة'}</button>${edit ? '<button class="btn btn-ghost" id="sv-del" style="color:var(--danger)">حذف</button>' : ''}<button class="btn btn-ghost" id="sv-cancel">إلغاء</button>`,
+    onOpen: (root, close) => {
+      root.querySelector('#sv-cancel').onclick = close;
+      root.querySelector('#sv-save').onclick = async (e) => {
+        const body = { name: root.querySelector('#sv-name').value.trim(), department: root.querySelector('#sv-dep').value || null, price: Number(root.querySelector('#sv-price').value || 0) };
+        if (!body.name) { toast('أدخل اسم الخدمة', 'err'); return; }
+        e.target.disabled = true;
+        try { edit ? await API.patch('/admin/services/' + s.id, body) : await API.post('/admin/services', body); close(); toast('تم الحفظ'); onDone?.(); }
+        catch (ex) { toast(ex.message, 'err'); e.target.disabled = false; }
+      };
+      if (edit) {
+        root.querySelector('#sv-del').onclick = async () => {
+          if (!confirm('حذف خدمة «' + s.name + '»؟')) return;
+          try { await API.del('/admin/services/' + s.id); close(); toast('تم الحذف'); onDone?.(); } catch (ex) { toast(ex.message, 'err'); }
+        };
+      }
+    },
+  });
+}
+
+// ===== نموذج دواء (مخزون) =====
+function MedicineForm(m = null, onDone) {
+  const edit = !!m;
+  openModal({
+    title: edit ? 'تعديل صنف' : 'صنف جديد', width: 470,
+    body: `
+      <div class="field"><label>اسم الدواء/الصنف *</label><input id="m-name" value="${esc(m?.name || '')}"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
+        <div class="field"><label>التصنيف</label><input id="m-cat" value="${esc(m?.category || '')}" placeholder="مضاد حيوي…"></div>
+        <div class="field"><label>الوحدة</label><input id="m-unit" value="${esc(m?.unit || '')}" placeholder="علبة / شريط…"></div>
+        <div class="field"><label>الكمية *</label><input id="m-qty" type="number" value="${m?.quantity ?? ''}"></div>
+        <div class="field"><label>حد التنبيه</label><input id="m-low" type="number" value="${m?.low_stock_threshold ?? ''}" placeholder="10"></div>
+        <div class="field" style="margin-bottom:0"><label>السعر</label><input id="m-price" type="number" value="${m?.price ?? ''}"></div>
+      </div>`,
+    footer: `<button class="btn btn-primary" id="m-save">${edit ? 'حفظ' : 'إضافة'}</button>${edit ? '<button class="btn btn-ghost" id="m-del" style="color:var(--danger)">حذف</button>' : ''}<button class="btn btn-ghost" id="m-cancel">إلغاء</button>`,
+    onOpen: (root, close) => {
+      root.querySelector('#m-cancel').onclick = close;
+      root.querySelector('#m-save').onclick = async (e) => {
+        const body = {
+          name: root.querySelector('#m-name').value.trim(), category: root.querySelector('#m-cat').value || null,
+          unit: root.querySelector('#m-unit').value || null, quantity: Number(root.querySelector('#m-qty').value || 0),
+          low_stock_threshold: Number(root.querySelector('#m-low').value || 0),
+          price: root.querySelector('#m-price').value ? Number(root.querySelector('#m-price').value) : null,
+        };
+        if (!body.name) { toast('أدخل اسم الصنف', 'err'); return; }
+        e.target.disabled = true;
+        try { edit ? await API.patch('/admin/inventory/' + m.id, body) : await API.post('/admin/inventory', body); close(); toast('تم الحفظ'); onDone?.(); }
+        catch (ex) { toast(ex.message, 'err'); e.target.disabled = false; }
+      };
+      if (edit) {
+        root.querySelector('#m-del').onclick = async () => {
+          if (!confirm('حذف «' + m.name + '»؟')) return;
+          try { await API.del('/admin/inventory/' + m.id); close(); toast('تم الحذف'); onDone?.(); } catch (ex) { toast(ex.message, 'err'); }
+        };
+      }
+    },
+  });
+}
+
+// ===== طباعة فاتورة =====
+function printInvoice(inv) {
+  const clinic = App.clinic?.name || 'عيادتي';
+  const rows = (inv.items || []).map((it) => `<tr><td>${esc(it.name)}</td><td style="text-align:left">${money(it.price)} ريال</td></tr>`).join('');
+  const w = window.open('', '_blank', 'width=440,height=660');
+  if (!w) { toast('اسمح بالنوافذ المنبثقة للطباعة', 'err'); return; }
+  w.document.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>فاتورة #${esc(inv.number)}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>body{font-family:'Cairo',Arial,sans-serif;padding:26px;color:#1e293b}h1{font-size:18px;margin:0}
+  table{width:100%;border-collapse:collapse;margin-top:16px;font-size:13px}td,th{padding:8px 4px;border-bottom:1px solid #e2e8f0;text-align:right}
+  .tot td{font-weight:700;font-size:15px;border-top:2px solid #0e8a8a;border-bottom:none;padding-top:10px}
+  .muted{color:#64748b;font-size:12px}</style></head><body>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div><h1>${esc(clinic)}</h1><div class="muted">فاتورة رقم #${esc(inv.number)}</div></div>
+    <div class="muted" style="text-align:left">${dateOf(inv.created_at)}<br>${INV_STATUS[inv.status]?.label || ''}</div>
+  </div>
+  <div class="muted" style="margin-top:10px">المريض: <b style="color:#1e293b">${esc(inv.patient?.name || '—')}</b>${inv.patient?.file_no ? ' · ملف ' + esc(inv.patient.file_no) : ''}</div>
+  <table><tr><th>البند</th><th style="text-align:left">المبلغ</th></tr>${rows}
+  <tr class="tot"><td>الإجمالي</td><td style="text-align:left">${money(inv.total)} ريال</td></tr></table>
+  ${inv.method ? `<div class="muted" style="margin-top:12px">طريقة الدفع: ${PAY_METHOD[inv.method] || inv.method}</div>` : ''}
+  <div class="muted" style="margin-top:30px;text-align:center">شكراً لزيارتكم — ${esc(clinic)}</div>
+  <script>window.onload=function(){window.print()}<\/script></body></html>`);
+  w.document.close();
+}
