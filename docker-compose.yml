@@ -1,0 +1,52 @@
+# عيادتي — clinic management: static site (nginx) + Laravel API + MySQL
+# One command runs everything: docker compose up -d
+name: clinic-system
+services:
+  clinic-web:
+    image: nginx:alpine
+    container_name: clinic-web
+    restart: unless-stopped
+    ports:
+      - "8093:80"
+    volumes:
+      - .:/usr/share/nginx/html:ro
+      - ./.nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    networks: [clinic-net]
+
+  clinic-db:
+    image: mysql:8.0
+    container_name: clinic-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: clinic
+    ports:
+      - "3394:3306"
+    volumes:
+      - clinic-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-psecret"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [clinic-net]
+
+  clinic-api:
+    build: ./api
+    container_name: clinic-api
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./api:/app
+    ports:
+      - "8094:8000"
+    depends_on:
+      clinic-db:
+        condition: service_healthy
+    networks: [clinic-net]
+
+volumes:
+  clinic-db-data:
+
+networks:
+  clinic-net:

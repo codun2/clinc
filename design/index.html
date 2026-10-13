@@ -1,0 +1,826 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>عيادتي — نظام إدارة العيادة</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.11.0/dist/tabler-icons.min.css">
+<style>
+:root{
+  --teal:#0e8a8a; --teal-dark:#0a6d6d; --teal-50:#e6f5f5; --teal-100:#c9eaea;
+  --bg:#f4f6f8; --surface:#ffffff; --border:#e2e8f0; --border-2:#cbd5e1;
+  --text:#1e293b; --muted:#64748b; --faint:#94a3b8;
+  --danger:#dc2626; --danger-bg:#fee2e2; --warn:#92400e; --warn-bg:#fef3c7;
+  --ok:#166534; --ok-bg:#dcfce7; --info:#1e40af; --info-bg:#dbeafe;
+  --r:12px; --shadow:0 1px 3px rgba(15,23,42,.08),0 1px 2px rgba(15,23,42,.04);
+  --sidebar:232px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cairo',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+a{color:inherit;text-decoration:none}
+.hidden{display:none!important}
+/* ===== shell ===== */
+.shell{display:grid;grid-template-columns:var(--sidebar) 1fr;min-height:100vh}
+.sidebar{background:var(--surface);border-left:1px solid var(--border);padding:18px 12px;display:flex;flex-direction:column;gap:3px;position:sticky;top:0;height:100vh;overflow:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 8px 16px}
+.brand .mark{width:40px;height:40px;border-radius:12px;background:var(--teal);display:grid;place-items:center;color:#fff;font-size:21px}
+.brand b{font-size:16px;font-weight:700}
+.brand small{display:block;color:var(--muted);font-size:11px;font-weight:400}
+.nav-label{font-size:11px;color:var(--faint);padding:12px 10px 4px}
+.nav-item{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;color:var(--muted);cursor:pointer;font-size:14px;transition:background .15s,color .15s}
+.nav-item i{font-size:19px}
+.nav-item:hover{background:var(--bg);color:var(--text)}
+.nav-item.active{background:var(--teal-50);color:var(--teal-dark);font-weight:600}
+.sidebar .me{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:var(--bg)}
+.avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:600;background:var(--teal-100);color:var(--teal-dark);flex:none}
+.main{padding:20px 24px;min-width:0}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.topbar h1{font-size:19px;font-weight:700}
+.topbar .sub{font-size:12.5px;color:var(--muted)}
+.top-actions{display:flex;align-items:center;gap:10px}
+.search{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 12px;color:var(--faint);min-width:210px;font-size:13px}
+.icon-btn{width:38px;height:38px;border-radius:10px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;color:var(--muted);cursor:pointer;position:relative}
+.icon-btn .dot{position:absolute;top:8px;left:10px;width:7px;height:7px;border-radius:50%;background:var(--danger)}
+/* ===== components ===== */
+.btn{display:inline-flex;align-items:center;gap:7px;border:none;border-radius:10px;padding:9px 16px;font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;transition:background .15s}
+.btn-primary{background:var(--teal);color:#fff}
+.btn-primary:hover{background:var(--teal-dark)}
+.btn-ghost{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--border-2)}
+.btn-soft{background:var(--teal-50);color:var(--teal-dark)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow)}
+.card-h{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border)}
+.card-h b{font-size:15px}
+.card-h .link{font-size:12px;color:var(--teal);cursor:pointer;font-weight:600}
+.pad{padding:14px 16px}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 11px;border-radius:20px;white-space:nowrap}
+.b-ok{background:var(--ok-bg);color:var(--ok)}
+.b-warn{background:var(--warn-bg);color:var(--warn)}
+.b-info{background:var(--info-bg);color:var(--info)}
+.b-mut{background:var(--bg);color:var(--muted)}
+.b-dgr{background:var(--danger-bg);color:var(--danger)}
+.b-teal{background:var(--teal-50);color:var(--teal-dark)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;box-shadow:var(--shadow)}
+.kpi .t{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
+.kpi .t i{font-size:17px;color:var(--teal)}
+.kpi .v{font-size:25px;font-weight:700;margin-top:4px}
+.kpi .d{font-size:11.5px;color:var(--muted)}
+.kpi .d.up{color:var(--ok)} .kpi .d.warn{color:var(--warn)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:11.5px;color:var(--muted);font-weight:600;text-align:right;padding:10px 14px;border-bottom:1px solid var(--border);background:#fafbfc}
+td{padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr.row:hover td{background:#fafbfc;cursor:pointer}
+.cell-p{display:flex;align-items:center;gap:10px}
+.cell-p small{display:block;color:var(--muted);font-size:11.5px;font-weight:400}
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.chip{padding:6px 13px;border-radius:20px;font-size:12px;background:var(--surface);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-weight:600}
+.chip.on{background:var(--teal);border-color:var(--teal);color:#fff}
+.grid2{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;align-items:start}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:start}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:600}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-family:inherit;font-size:13.5px;background:var(--surface);color:var(--text)}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-50)}
+.bar-row{margin-bottom:10px}
+.bar-row .lbl{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px}
+.bar{height:8px;background:var(--bg);border-radius:20px;overflow:hidden}
+.bar>span{display:block;height:100%;background:var(--teal);border-radius:20px}
+.page{display:none}
+.page.active{display:block;animation:fade .2s}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+/* ===== login & booking ===== */
+.auth{min-height:100vh;display:grid;grid-template-columns:1fr 1fr}
+.auth-side{background:var(--teal);color:#fff;display:flex;flex-direction:column;justify-content:center;padding:60px;gap:14px}
+.auth-side .mark{width:52px;height:52px;border-radius:15px;background:rgba(255,255,255,.2);display:grid;place-items:center;font-size:28px;margin-bottom:8px}
+.auth-side h2{font-size:26px;font-weight:700;line-height:1.5}
+.auth-side p{opacity:.9;line-height:1.9;font-size:14px}
+.auth-side .feat{display:flex;align-items:center;gap:10px;font-size:13.5px;opacity:.95}
+.auth-form{display:flex;align-items:center;justify-content:center;padding:40px}
+.auth-card{width:100%;max-width:400px}
+.auth-card h3{font-size:21px;font-weight:700;margin-bottom:4px}
+.auth-card>p{color:var(--muted);font-size:13px;margin-bottom:22px}
+.booking-wrap{max-width:860px;margin:0 auto;padding:28px 20px}
+.steps{display:flex;align-items:center;gap:8px;margin:18px 0 22px}
+.step{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
+.step .n{width:26px;height:26px;border-radius:50%;background:var(--bg);border:1px solid var(--border);display:grid;place-items:center;font-size:12px;font-weight:700}
+.step.on{color:var(--teal-dark);font-weight:600}
+.step.on .n{background:var(--teal);border-color:var(--teal);color:#fff}
+.step-sep{flex:1;height:1px;background:var(--border)}
+.slot{padding:9px 0;border:1px solid var(--border);border-radius:9px;text-align:center;font-size:13px;cursor:pointer;background:var(--surface)}
+.slot:hover{border-color:var(--teal)}
+.slot.on{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:600}
+.slot.off{background:var(--bg);color:var(--faint);text-decoration:line-through;cursor:not-allowed}
+.doc-card{border:1px solid var(--border);border-radius:var(--r);padding:14px;text-align:center;cursor:pointer;background:var(--surface)}
+.doc-card:hover{border-color:var(--teal)}
+.doc-card.on{border:2px solid var(--teal);background:var(--teal-50)}
+/* consultation */
+.consult-grid{display:grid;grid-template-columns:.9fr 1.5fr 1fr;gap:14px;align-items:start}
+.vitals{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.vitals .vv{font-size:15px;font-weight:600}
+.vitals .vl{font-size:11px;color:var(--muted)}
+.visit-mini{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:9px 11px;margin-bottom:7px;cursor:pointer}
+.visit-mini:hover{border-color:var(--teal)}
+.rx{display:flex;align-items:center;gap:9px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:9px 11px;margin-bottom:7px;font-size:13px}
+.rx i{color:var(--teal)}
+.finish{background:var(--teal);border-radius:var(--r);padding:14px;color:#fff}
+.finish .big{background:rgba(255,255,255,.22);border-radius:9px;padding:11px;text-align:center;font-size:14px;font-weight:700;cursor:pointer}
+.finish .sm{flex:1;background:rgba(255,255,255,.14);border-radius:8px;padding:8px;text-align:center;font-size:12px;cursor:pointer}
+.sched{display:grid;grid-template-columns:52px 1fr;gap:0}
+.sched .tm{font-size:12px;color:var(--faint);padding:14px 0;border-left:1px solid var(--border);text-align:left;padding-left:10px}
+.sched .slot-line{border-bottom:1px dashed var(--border);padding:8px 12px;min-height:52px}
+.appt{border-radius:9px;padding:8px 12px;font-size:12.5px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.appt b{font-size:13px}
+.appt small{color:inherit;opacity:.75;font-size:11.5px}
+.a-teal{background:var(--teal-50);color:var(--teal-dark);border-right:3px solid var(--teal)}
+.a-amber{background:var(--warn-bg);color:var(--warn);border-right:3px solid #d97706}
+.a-gray{background:var(--bg);color:var(--muted);border-right:3px solid var(--border-2)}
+.cols{display:flex;gap:16px;align-items:flex-end;height:170px;padding:10px 6px 0}
+.col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px}
+.col>span{width:100%;max-width:38px;background:var(--teal-100);border-radius:7px 7px 0 0}
+.col.hot>span{background:var(--teal)}
+.col em{font-style:normal;font-size:11px;color:var(--muted)}
+@media(max-width:980px){.shell{grid-template-columns:1fr}.sidebar{display:none}.grid2,.grid3,.consult-grid{grid-template-columns:1fr}.auth{grid-template-columns:1fr}.auth-side{display:none}}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="view-login" class="auth">
+  <div class="auth-side">
+    <div class="mark"><i class="ti ti-heartbeat"></i></div>
+    <h2>عيادتي<br>نظام إدارة العيادات الذكي</h2>
+    <p>نظام عربي أولاً لإدارة العيادة: مواعيد، ملفات مرضى، كشوفات بشاشة واحدة، فواتير وتقارير — بدون تعقيد وبدون تدريب.</p>
+    <div class="feat"><i class="ti ti-circle-check"></i> كشف كامل بشاشة واحدة وزر واحد</div>
+    <div class="feat"><i class="ti ti-circle-check"></i> حجز أونلاين وتذكير SMS للمرضى</div>
+    <div class="feat"><i class="ti ti-circle-check"></i> يعمل من أي جهاز — بالعربي وبالكامل RTL</div>
+  </div>
+  <div class="auth-form">
+    <div class="auth-card">
+      <h3>تسجيل الدخول</h3>
+      <p>أدخل بياناتك للوصول إلى لوحة العيادة</p>
+      <div class="field"><label>البريد الإلكتروني</label><input type="email" placeholder="name@clinic.com" value="dr.sara@clinic.com"></div>
+      <div class="field"><label>كلمة المرور</label><input type="password" value="••••••••"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:4px 0 16px">
+        <label style="font-size:12.5px;color:var(--muted);display:flex;gap:6px;align-items:center"><input type="checkbox" checked style="width:auto"> تذكّرني</label>
+        <a style="font-size:12.5px;color:var(--teal);font-weight:600;cursor:pointer">نسيت كلمة المرور؟</a>
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" onclick="enterApp()">دخول <i class="ti ti-arrow-left"></i></button>
+      <div style="text-align:center;margin-top:18px;font-size:12.5px;color:var(--muted)">مريض؟ <a style="color:var(--teal);font-weight:600;cursor:pointer" onclick="showBooking()">احجز موعدك أونلاين</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PUBLIC BOOKING ============ -->
+<div id="view-booking" class="hidden" style="min-height:100vh;background:var(--bg)">
+  <div style="background:var(--surface);border-bottom:1px solid var(--border)">
+    <div class="booking-wrap" style="padding:14px 20px;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:36px;border-radius:10px;background:var(--teal);display:grid;place-items:center;color:#fff;font-size:19px"><i class="ti ti-heartbeat"></i></div>
+        <div><b>عيادة النور الطبية</b><small style="display:block;color:var(--muted);font-size:11px">الرياض — حي الملقا · 920001234</small></div>
+      </div>
+      <button class="btn btn-ghost" onclick="showLogin()"><i class="ti ti-login-2"></i> دخول الموظفين</button>
+    </div>
+  </div>
+  <div class="booking-wrap">
+    <h1 style="font-size:21px;font-weight:700">احجز موعدك في دقيقة</h1>
+    <p style="color:var(--muted);font-size:13px;margin-top:3px">اختر القسم والطبيب والوقت المناسب — يصلك تأكيد وتذكير برسالة SMS</p>
+    <div class="steps">
+      <div class="step on"><span class="n">1</span> القسم والطبيب</div><div class="step-sep"></div>
+      <div class="step on"><span class="n">2</span> الموعد</div><div class="step-sep"></div>
+      <div class="step"><span class="n">3</span> بياناتك</div><div class="step-sep"></div>
+      <div class="step"><span class="n">4</span> التأكيد</div>
+    </div>
+    <div class="grid2">
+      <div>
+        <div class="card" style="margin-bottom:14px">
+          <div class="card-h"><b>اختر القسم</b></div>
+          <div class="pad chips">
+            <span class="chip on">باطنية</span><span class="chip">أسنان</span><span class="chip">جلدية</span><span class="chip">أطفال</span><span class="chip">نساء وولادة</span><span class="chip">عظام</span>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:14px">
+          <div class="card-h"><b>اختر الطبيب</b></div>
+          <div class="pad" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+            <div class="doc-card on"><div class="avatar" style="margin:0 auto 8px;width:46px;height:46px;font-size:15px">س.أ</div><b style="font-size:13.5px">د. سارة أحمد</b><div style="font-size:11.5px;color:var(--muted)">باطنية · 12 سنة خبرة</div><div class="badge b-teal" style="margin-top:7px">كشف 150 ريال</div></div>
+            <div class="doc-card"><div class="avatar" style="margin:0 auto 8px;width:46px;height:46px;font-size:15px">خ.م</div><b style="font-size:13.5px">د. خالد المطيري</b><div style="font-size:11.5px;color:var(--muted)">باطنية · 8 سنوات</div><div class="badge b-mut" style="margin-top:7px">كشف 130 ريال</div></div>
+            <div class="doc-card"><div class="avatar" style="margin:0 auto 8px;width:46px;height:46px;font-size:15px">ر.ع</div><b style="font-size:13.5px">د. ريم العلي</b><div style="font-size:11.5px;color:var(--muted)">باطنية · 15 سنة</div><div class="badge b-mut" style="margin-top:7px">كشف 180 ريال</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h"><b>الأوقات المتاحة — الأربعاء 14 أكتوبر</b><span class="link">غيّر اليوم</span></div>
+          <div class="pad" style="display:grid;grid-template-columns:repeat(5,1fr);gap:9px">
+            <div class="slot off">09:00</div><div class="slot">09:30</div><div class="slot on">10:00</div><div class="slot">10:30</div><div class="slot">11:00</div>
+            <div class="slot">11:30</div><div class="slot off">12:00</div><div class="slot">16:00</div><div class="slot">16:30</div><div class="slot">17:00</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><b>ملخص الحجز</b></div>
+        <div class="pad">
+          <div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">القسم</span><b>باطنية</b></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">الطبيب</span><b>د. سارة أحمد</b></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">الموعد</span><b>الأربعاء 14 أكتوبر · 10:00</b></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0"><span style="color:var(--muted)">رسوم الكشف</span><b style="color:var(--teal-dark)">150 ريال</b></div>
+          <div class="field" style="margin-top:10px"><label>الاسم الكامل</label><input placeholder="مثال: محمد العتيبي"></div>
+          <div class="field"><label>رقم الجوال</label><input placeholder="05xxxxxxxx"></div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;margin-top:4px">تأكيد الحجز <i class="ti ti-circle-check"></i></button>
+          <div style="font-size:11.5px;color:var(--muted);text-align:center;margin-top:10px"><i class="ti ti-message"></i> سيصلك رمز تأكيد وتذكير قبل الموعد بـ 24 ساعة</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ APP SHELL ============ -->
+<div id="view-app" class="shell hidden">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="mark"><i class="ti ti-heartbeat"></i></div>
+      <div><b>عيادتي</b><small>عيادة النور الطبية</small></div>
+    </div>
+    <div class="nav-label">القائمة الرئيسية</div>
+    <div class="nav-item active" data-page="dashboard"><i class="ti ti-layout-dashboard"></i> لوحة التحكم</div>
+    <div class="nav-item" data-page="appointments"><i class="ti ti-calendar-event"></i> المواعيد</div>
+    <div class="nav-item" data-page="patients"><i class="ti ti-users"></i> المرضى</div>
+    <div class="nav-item" data-page="consult"><i class="ti ti-stethoscope"></i> شاشة الكشف</div>
+    <div class="nav-item" data-page="invoices"><i class="ti ti-file-invoice"></i> الفواتير</div>
+    <div class="nav-label">الإدارة</div>
+    <div class="nav-item" data-page="reports"><i class="ti ti-chart-bar"></i> التقارير</div>
+    <div class="nav-item" data-page="staff"><i class="ti ti-id-badge-2"></i> الأطباء والموظفون</div>
+    <div class="nav-item" data-page="settings"><i class="ti ti-settings"></i> الإعدادات</div>
+    <div class="nav-label">عام</div>
+    <div class="nav-item" onclick="showBooking()"><i class="ti ti-world"></i> صفحة الحجز العامة</div>
+    <div class="nav-item" onclick="showLogin()"><i class="ti ti-logout-2"></i> تسجيل الخروج</div>
+    <div class="me">
+      <div class="avatar">د.س</div>
+      <div style="line-height:1.35"><div style="font-size:13px;font-weight:600">د. سارة أحمد</div><div style="font-size:11px;color:var(--muted)">طبيبة باطنية</div></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- ===== DASHBOARD ===== -->
+    <section class="page active" id="page-dashboard">
+      <div class="topbar">
+        <div><h1>مرحباً د. سارة 👋</h1><div class="sub">الثلاثاء 13 أكتوبر 2026 · نظرة عامة على يومك</div></div>
+        <div class="top-actions">
+          <div class="search"><i class="ti ti-search"></i> بحث عن مريض…</div>
+          <div class="icon-btn"><i class="ti ti-bell"></i><span class="dot"></span></div>
+          <button class="btn btn-primary"><i class="ti ti-plus"></i> موعد جديد</button>
+        </div>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="t"><i class="ti ti-calendar-check"></i> مواعيد اليوم</div><div class="v">24</div><div class="d up">8 مكتملة · 16 متبقية</div></div>
+        <div class="kpi"><div class="t"><i class="ti ti-user-plus"></i> مرضى جدد</div><div class="v">6</div><div class="d">هذا الأسبوع</div></div>
+        <div class="kpi"><div class="t"><i class="ti ti-clock-hour-4"></i> قائمة الانتظار</div><div class="v">3</div><div class="d warn">متوسط الانتظار 12 دقيقة</div></div>
+        <div class="kpi"><div class="t"><i class="ti ti-cash"></i> إيرادات اليوم</div><div class="v">4,850</div><div class="d">ريال · 14 فاتورة</div></div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-h"><b>مواعيد اليوم</b><span class="link" onclick="go('appointments')">عرض الكل</span></div>
+          <table>
+            <tr class="row" onclick="go('consult')">
+              <td style="color:var(--faint);width:60px">09:00</td>
+              <td><div class="cell-p"><div class="avatar">م.ع</div><div>محمد العتيبي<small>كشف · باطنية</small></div></div></td>
+              <td style="width:100px"><span class="badge b-ok">مكتمل</span></td>
+            </tr>
+            <tr class="row" onclick="go('consult')">
+              <td style="color:var(--faint)">09:30</td>
+              <td><div class="cell-p"><div class="avatar" style="background:var(--info-bg);color:var(--info)">ل.ح</div><div>لمى الحربي<small>متابعة · باطنية</small></div></div></td>
+              <td><span class="badge b-warn">قيد الكشف</span></td>
+            </tr>
+            <tr class="row">
+              <td style="color:var(--faint)">10:00</td>
+              <td><div class="cell-p"><div class="avatar" style="background:#fde8e8;color:#9b2c2c">ن.ق</div><div>نورة القحطاني<small>كشف جديد · جلدية</small></div></div></td>
+              <td><span class="badge b-mut">بالانتظار</span></td>
+            </tr>
+            <tr class="row">
+              <td style="color:var(--faint)">10:30</td>
+              <td><div class="cell-p"><div class="avatar">خ.س</div><div>خالد السالم<small>متابعة · عظام</small></div></div></td>
+              <td><span class="badge b-mut">بالانتظار</span></td>
+            </tr>
+            <tr class="row">
+              <td style="color:var(--faint)">11:00</td>
+              <td><div class="cell-p"><div class="avatar" style="background:var(--info-bg);color:var(--info)">ف.ز</div><div>فهد الزهراني<small>كشف · أسنان</small></div></div></td>
+              <td><span class="badge b-info">مؤكد</span></td>
+            </tr>
+          </table>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="card pad" style="background:var(--teal);border-color:var(--teal);color:#fff">
+            <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;opacity:.9"><i class="ti ti-user-check"></i> المريض التالي</div>
+            <div style="font-size:17px;font-weight:700;margin-top:7px">لمى الحربي</div>
+            <div style="font-size:12px;opacity:.85">غرفة 2 · متابعة باطنية · ملف 10311</div>
+            <div style="display:flex;gap:8px;margin-top:13px">
+              <div class="finish sm" style="background:rgba(255,255,255,.22)">استدعاء</div>
+              <div class="finish sm" style="background:rgba(255,255,255,.22)" onclick="go('patient')">فتح الملف</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h"><b>توزيع المواعيد حسب القسم</b></div>
+            <div class="pad">
+              <div class="bar-row"><div class="lbl"><span>أسنان</span><span>9</span></div><div class="bar"><span style="width:75%"></span></div></div>
+              <div class="bar-row"><div class="lbl"><span>باطنية</span><span>6</span></div><div class="bar"><span style="width:50%"></span></div></div>
+              <div class="bar-row"><div class="lbl"><span>جلدية</span><span>5</span></div><div class="bar"><span style="width:42%"></span></div></div>
+              <div class="bar-row" style="margin:0"><div class="lbl"><span>عظام</span><span>4</span></div><div class="bar"><span style="width:33%"></span></div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h"><b>تنبيهات</b></div>
+            <div class="pad" style="display:flex;flex-direction:column;gap:9px">
+              <div style="display:flex;gap:9px;font-size:12.5px"><i class="ti ti-alert-triangle" style="color:#d97706"></i> 3 فواتير معلّقة منذ أكثر من أسبوع</div>
+              <div style="display:flex;gap:9px;font-size:12.5px"><i class="ti ti-calendar-x" style="color:var(--danger)"></i> موعدان لم يحضر أصحابهما أمس</div>
+              <div style="display:flex;gap:9px;font-size:12.5px"><i class="ti ti-message" style="color:var(--teal)"></i> أُرسلت 21 رسالة تذكير لمواعيد الغد</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== APPOINTMENTS ===== -->
+    <section class="page" id="page-appointments">
+      <div class="topbar">
+        <div><h1>المواعيد</h1><div class="sub">الثلاثاء 13 أكتوبر 2026</div></div>
+        <div class="top-actions">
+          <div style="display:flex;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface)">
+            <span style="padding:8px 15px;font-size:12.5px;background:var(--teal);color:#fff;font-weight:600">يوم</span>
+            <span style="padding:8px 15px;font-size:12.5px;color:var(--muted)">أسبوع</span>
+            <span style="padding:8px 15px;font-size:12.5px;color:var(--muted)">شهر</span>
+          </div>
+          <button class="btn btn-ghost"><i class="ti ti-chevron-right"></i></button>
+          <button class="btn btn-ghost">اليوم</button>
+          <button class="btn btn-ghost"><i class="ti ti-chevron-left"></i></button>
+          <button class="btn btn-primary"><i class="ti ti-plus"></i> موعد جديد</button>
+        </div>
+      </div>
+      <div class="chips" style="margin-bottom:14px">
+        <span class="chip on">كل الأطباء</span><span class="chip">د. سارة أحمد</span><span class="chip">د. خالد المطيري</span><span class="chip">د. ريم العلي</span>
+        <span style="flex:1"></span>
+        <span class="chip"><i class="ti ti-filter"></i> الحالة: الكل</span>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <div class="sched">
+            <div class="tm">09:00</div><div class="slot-line"><div class="appt a-teal"><div><b>محمد العتيبي</b> <small>كشف باطنية · د. سارة</small></div><span class="badge b-ok">مكتمل</span></div></div>
+            <div class="tm">09:30</div><div class="slot-line"><div class="appt a-amber"><div><b>لمى الحربي</b> <small>متابعة · د. سارة</small></div><span class="badge b-warn">قيد الكشف</span></div></div>
+            <div class="tm">10:00</div><div class="slot-line"><div class="appt a-gray"><div><b>نورة القحطاني</b> <small>كشف جلدية · د. ريم</small></div><span class="badge b-mut">بالانتظار</span></div></div>
+            <div class="tm">10:30</div><div class="slot-line"><div class="appt a-gray"><div><b>خالد السالم</b> <small>متابعة عظام · د. خالد</small></div><span class="badge b-mut">بالانتظار</span></div></div>
+            <div class="tm">11:00</div><div class="slot-line"><div class="appt a-teal"><div><b>فهد الزهراني</b> <small>كشف أسنان · د. خالد</small></div><span class="badge b-info">مؤكد</span></div></div>
+            <div class="tm">11:30</div><div class="slot-line"></div>
+            <div class="tm">12:00</div><div class="slot-line"><div class="appt a-teal"><div><b>عبير الشمري</b> <small>كشف باطنية · د. سارة</small></div><span class="badge b-info">مؤكد</span></div></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="card">
+            <div class="card-h"><b>قائمة الانتظار الآن</b><span class="badge b-teal">3</span></div>
+            <div class="pad" style="display:flex;flex-direction:column;gap:9px">
+              <div style="display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:9px;padding:9px 11px">
+                <b style="color:var(--teal);font-size:15px">1</b><div style="flex:1"><div style="font-size:13px;font-weight:600">نورة القحطاني</div><div style="font-size:11px;color:var(--muted)">وصلت 09:50 · انتظار 10 د</div></div><button class="btn btn-soft" style="padding:6px 12px;font-size:12px">استدعاء</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:9px;padding:9px 11px">
+                <b style="color:var(--muted);font-size:15px">2</b><div style="flex:1"><div style="font-size:13px;font-weight:600">خالد السالم</div><div style="font-size:11px;color:var(--muted)">وصل 10:05 · انتظار 5 د</div></div><button class="btn btn-ghost" style="padding:6px 12px;font-size:12px">استدعاء</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:9px;padding:9px 11px">
+                <b style="color:var(--muted);font-size:15px">3</b><div style="flex:1"><div style="font-size:13px;font-weight:600">فهد الزهراني</div><div style="font-size:11px;color:var(--muted)">وصل 10:20 · الآن</div></div><button class="btn btn-ghost" style="padding:6px 12px;font-size:12px">استدعاء</button>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h"><b>ملخص اليوم</b></div>
+            <div class="pad">
+              <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">إجمالي المواعيد</span><b>24</b></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">حضر</span><b style="color:var(--ok)">8</b></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">لم يحضر</span><b style="color:var(--danger)">1</b></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0"><span style="color:var(--muted)">حجوزات أونلاين</span><b style="color:var(--teal-dark)">9</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== PATIENTS ===== -->
+    <section class="page" id="page-patients">
+      <div class="topbar">
+        <div><h1>المرضى</h1><div class="sub">1,284 ملف مريض</div></div>
+        <div class="top-actions">
+          <div class="search" style="min-width:260px"><i class="ti ti-search"></i> بالاسم، الجوال، أو رقم الملف…</div>
+          <button class="btn btn-ghost"><i class="ti ti-download"></i> تصدير</button>
+          <button class="btn btn-primary"><i class="ti ti-user-plus"></i> مريض جديد</button>
+        </div>
+      </div>
+      <div class="chips" style="margin-bottom:14px">
+        <span class="chip on">الكل</span><span class="chip">زاروا هذا الشهر</span><span class="chip">لديهم فواتير معلّقة</span><span class="chip">حالات مزمنة</span>
+      </div>
+      <div class="card">
+        <table>
+          <tr><th>المريض</th><th>رقم الملف</th><th>الجوال</th><th>العمر</th><th>آخر زيارة</th><th>الحالة المالية</th><th></th></tr>
+          <tr class="row" onclick="go('patient')">
+            <td><div class="cell-p"><div class="avatar">م.ع</div><div>محمد العتيبي<small>ذكر · حساسية بنسلين</small></div></div></td>
+            <td>10428</td><td style="direction:ltr;text-align:right">0551234567</td><td>34</td><td>قبل 3 أشهر</td>
+            <td><span class="badge b-ok">خالص</span></td>
+            <td><i class="ti ti-chevron-left" style="color:var(--faint)"></i></td>
+          </tr>
+          <tr class="row" onclick="go('patient')">
+            <td><div class="cell-p"><div class="avatar" style="background:var(--info-bg);color:var(--info)">ل.ح</div><div>لمى الحربي<small>أنثى · سكري نوع 2</small></div></div></td>
+            <td>10311</td><td style="direction:ltr;text-align:right">0569876543</td><td>41</td><td>اليوم</td>
+            <td><span class="badge b-dgr">معلّق 60 ريال</span></td>
+            <td><i class="ti ti-chevron-left" style="color:var(--faint)"></i></td>
+          </tr>
+          <tr class="row" onclick="go('patient')">
+            <td><div class="cell-p"><div class="avatar" style="background:#fde8e8;color:#9b2c2c">ن.ق</div><div>نورة القحطاني<small>أنثى</small></div></div></td>
+            <td>10502</td><td style="direction:ltr;text-align:right">0533219876</td><td>27</td><td>أول زيارة</td>
+            <td><span class="badge b-mut">—</span></td>
+            <td><i class="ti ti-chevron-left" style="color:var(--faint)"></i></td>
+          </tr>
+          <tr class="row" onclick="go('patient')">
+            <td><div class="cell-p"><div class="avatar">خ.س</div><div>خالد السالم<small>ذكر · ضغط</small></div></div></td>
+            <td>10127</td><td style="direction:ltr;text-align:right">0545671234</td><td>56</td><td>قبل أسبوعين</td>
+            <td><span class="badge b-ok">خالص</span></td>
+            <td><i class="ti ti-chevron-left" style="color:var(--faint)"></i></td>
+          </tr>
+          <tr class="row" onclick="go('patient')">
+            <td><div class="cell-p"><div class="avatar" style="background:var(--info-bg);color:var(--info)">ف.ز</div><div>فهد الزهراني<small>ذكر</small></div></div></td>
+            <td>10477</td><td style="direction:ltr;text-align:right">0501112233</td><td>29</td><td>قبل شهر</td>
+            <td><span class="badge b-warn">معلّق 150 ريال</span></td>
+            <td><i class="ti ti-chevron-left" style="color:var(--faint)"></i></td>
+          </tr>
+        </table>
+        <div class="pad" style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border)">
+          <span style="font-size:12px;color:var(--muted)">عرض 1–5 من 1,284</span>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost" style="padding:6px 11px"><i class="ti ti-chevron-right"></i></button>
+            <button class="btn btn-soft" style="padding:6px 13px">1</button>
+            <button class="btn btn-ghost" style="padding:6px 13px">2</button>
+            <button class="btn btn-ghost" style="padding:6px 13px">3</button>
+            <button class="btn btn-ghost" style="padding:6px 11px"><i class="ti ti-chevron-left"></i></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== PATIENT FILE ===== -->
+    <section class="page" id="page-patient">
+      <div class="topbar">
+        <div style="display:flex;align-items:center;gap:12px">
+          <button class="btn btn-ghost" onclick="go('patients')" style="padding:8px 11px"><i class="ti ti-arrow-right"></i></button>
+          <div class="avatar" style="width:46px;height:46px;font-size:15px">م.ع</div>
+          <div><h1 style="font-size:17px">محمد العتيبي</h1><div class="sub">ملف 10428 · ذكر · 34 سنة · 0551234567</div></div>
+          <span class="badge b-warn"><i class="ti ti-alert-triangle"></i> حساسية: بنسلين</span>
+          <span class="badge b-teal">فصيلة O+</span>
+        </div>
+        <div class="top-actions">
+          <button class="btn btn-ghost"><i class="ti ti-edit"></i> تعديل البيانات</button>
+          <button class="btn btn-primary" onclick="go('consult')"><i class="ti ti-stethoscope"></i> بدء كشف</button>
+        </div>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="t"><i class="ti ti-folders"></i> إجمالي الزيارات</div><div class="v">12</div><div class="d">منذ يناير 2024</div></div>
+        <div class="kpi"><div class="t"><i class="ti ti-calendar"></i> آخر زيارة</div><div class="v" style="font-size:17px;padding-top:6px">15 يوليو 2026</div><div class="d">التهاب حلق · د. سارة</div></div>
+        <div class="kpi"><div class="t"><i class="ti ti-cash"></i> إجمالي المدفوعات</div><div class="v">2,340</div><div class="d">ريال</div></div>
+        <div class="kpi"><div class="t"><i class="ti ti-receipt"></i> مستحقات معلّقة</div><div class="v" style="color:var(--ok)">0</div><div class="d up">لا مستحقات</div></div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-h"><b>سجل الزيارات</b><span class="link">+ زيارة يدوية</span></div>
+          <table>
+            <tr><th>التاريخ</th><th>النوع</th><th>التشخيص</th><th>الطبيب</th><th>الفاتورة</th></tr>
+            <tr class="row"><td>15 يوليو 2026</td><td>كشف</td><td>التهاب حلق بكتيري</td><td>د. سارة</td><td><span class="badge b-ok">240 ريال</span></td></tr>
+            <tr class="row"><td>2 مايو 2026</td><td>مختبر</td><td>فحص دم شامل — سليم</td><td>المختبر</td><td><span class="badge b-ok">180 ريال</span></td></tr>
+            <tr class="row"><td>10 يناير 2026</td><td>متابعة</td><td>ارتفاع ضغط — مستقر</td><td>د. خالد</td><td><span class="badge b-ok">130 ريال</span></td></tr>
+            <tr class="row"><td>22 نوفمبر 2025</td><td>كشف</td><td>إنفلونزا موسمية</td><td>د. سارة</td><td><span class="badge b-ok">150 ريال</span></td></tr>
+          </table>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="card">
+            <div class="card-h"><b>البيانات الشخصية</b></div>
+            <div class="pad">
+              <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">تاريخ الميلاد</span><b>12 مارس 1992</b></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">الهوية</span><b>1098765432</b></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">العنوان</span><b>الرياض — الملقا</b></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0"><span style="color:var(--muted)">جهة طوارئ</span><b style="direction:ltr">0554447788</b></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h"><b>الحالات المزمنة والأدوية</b></div>
+            <div class="pad">
+              <div style="display:flex;align-items:center;gap:8px;font-size:13px;padding:5px 0"><span style="width:7px;height:7px;border-radius:50%;background:#d97706"></span> ارتفاع ضغط — منذ 2024</div>
+              <div style="font-size:12.5px;color:var(--muted);padding:8px 0 4px;font-weight:600">أدوية حالية</div>
+              <div style="font-size:13px;color:var(--muted);padding:3px 0"><i class="ti ti-pill" style="color:var(--teal)"></i> أملوديبين 5 ملغ — يومياً</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h"><b>المرفقات</b><span class="link">+ رفع</span></div>
+            <div class="pad" style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:9px;font-size:13px"><i class="ti ti-file-type-pdf" style="color:var(--danger)"></i> نتيجة فحص الدم — مايو 2026 <span style="margin-right:auto;font-size:11px;color:var(--faint)">1.2 MB</span></div>
+              <div style="display:flex;align-items:center;gap:9px;font-size:13px"><i class="ti ti-photo" style="color:var(--teal)"></i> أشعّة صدر — يناير 2026 <span style="margin-right:auto;font-size:11px;color:var(--faint)">3.4 MB</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== CONSULTATION ===== -->
+    <section class="page" id="page-consult">
+      <div class="topbar">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="avatar" style="width:44px;height:44px;font-size:14px">م.ع</div>
+          <div><h1 style="font-size:17px">محمد العتيبي <span style="font-size:13px;color:var(--muted);font-weight:400">· 34 سنة · ذكر</span></h1><div class="sub">ملف 10428 · آخر زيارة قبل 3 أشهر</div></div>
+        </div>
+        <div class="top-actions">
+          <span class="badge b-warn"><i class="ti ti-alert-triangle"></i> حساسية: بنسلين</span>
+          <span class="badge b-teal">كشف · باطنية</span>
+          <span class="badge b-mut"><i class="ti ti-clock"></i> 08:12</span>
+        </div>
+      </div>
+      <div class="consult-grid">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="card pad">
+            <div style="font-size:13px;font-weight:600;margin-bottom:10px"><i class="ti ti-activity-heartbeat" style="color:var(--teal)"></i> العلامات الحيوية</div>
+            <div class="vitals">
+              <div><div class="vl">الضغط</div><div class="vv">128/82</div></div>
+              <div><div class="vl">النبض</div><div class="vv">76</div></div>
+              <div><div class="vl">الحرارة</div><div class="vv">37.1°</div></div>
+              <div><div class="vl">الوزن</div><div class="vv">78 كجم</div></div>
+            </div>
+          </div>
+          <div class="card pad">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <div style="font-size:13px;font-weight:600"><i class="ti ti-folders" style="color:var(--teal)"></i> زيارات سابقة</div>
+              <span class="link" style="font-size:11px;color:var(--teal);font-weight:600;cursor:pointer" onclick="go('patient')">الكل</span>
+            </div>
+            <div class="visit-mini"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:13px">التهاب حلق</b><i class="ti ti-chevron-left" style="color:var(--faint);font-size:14px"></i></div><div style="font-size:11px;color:var(--muted)">15 يوليو · د. سارة</div></div>
+            <div class="visit-mini"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:13px">فحص دم شامل</b><i class="ti ti-chevron-left" style="color:var(--faint);font-size:14px"></i></div><div style="font-size:11px;color:var(--muted)">2 مايو · مختبر</div></div>
+            <div class="visit-mini" style="margin:0"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:13px">متابعة ضغط</b><i class="ti ti-chevron-left" style="color:var(--faint);font-size:14px"></i></div><div style="font-size:11px;color:var(--muted)">10 يناير · د. خالد</div></div>
+          </div>
+        </div>
+
+        <div class="card pad">
+          <div style="font-size:14px;font-weight:600;margin-bottom:10px"><i class="ti ti-notes" style="color:var(--teal)"></i> ملاحظة الكشف</div>
+          <div class="chips" style="margin-bottom:11px">
+            <span class="chip" style="background:var(--teal-50);border-color:var(--teal-50);color:var(--teal-dark)">+ صداع</span>
+            <span class="chip" style="background:var(--teal-50);border-color:var(--teal-50);color:var(--teal-dark)">+ حرارة</span>
+            <span class="chip" style="background:var(--teal-50);border-color:var(--teal-50);color:var(--teal-dark)">+ سعال</span>
+            <span class="chip">قوالب سريعة ⌄</span>
+          </div>
+          <div class="field"><textarea rows="5" style="resize:vertical">الشكوى: صداع وحرارة منذ يومين، سعال جاف.
+الفحص: الحلق محتقن، الصدر سليم.
+التشخيص: </textarea></div>
+          <div style="font-size:13px;font-weight:600;margin:4px 0 8px"><i class="ti ti-prescription" style="color:var(--teal)"></i> الوصفة</div>
+          <div class="rx"><i class="ti ti-pill"></i><div style="flex:1">باراسيتامول 500 <span style="color:var(--muted)">· حبة كل 8 ساعات · 5 أيام</span></div><i class="ti ti-x" style="color:var(--faint);font-size:14px;cursor:pointer"></i></div>
+          <div class="rx" style="border-style:dashed;color:var(--faint);cursor:pointer"><i class="ti ti-plus" style="color:var(--faint)"></i> أضف دواء… <span style="margin-right:auto;font-size:11px">يتحقق تلقائياً من الحساسية</span></div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="card pad">
+            <div style="font-size:13px;font-weight:600;margin-bottom:9px"><i class="ti ti-flask" style="color:var(--teal)"></i> طلبات سريعة</div>
+            <div style="display:flex;flex-direction:column;gap:7px">
+              <div class="visit-mini" style="margin:0">+ تحليل دم شامل</div>
+              <div class="visit-mini" style="margin:0">+ أشعّة صدر</div>
+              <div class="visit-mini" style="margin:0">+ تحويل لأخصائي</div>
+            </div>
+          </div>
+          <div class="card pad">
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);margin-bottom:5px"><span>رسوم الكشف</span><b style="color:var(--text)">150 ريال</b></div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted)"><span>تحاليل</span><b style="color:var(--text)">90 ريال</b></div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;border-top:1px dashed var(--border);margin-top:8px;padding-top:8px"><b>الإجمالي</b><b style="color:var(--teal-dark)">240 ريال</b></div>
+          </div>
+          <div class="finish">
+            <div style="font-size:12px;opacity:.9;margin-bottom:9px">إنهاء الكشف — خطوة واحدة</div>
+            <div class="big">حفظ · فاتورة · طباعة الوصفة</div>
+            <div style="display:flex;gap:7px;margin-top:8px">
+              <div class="sm">موعد متابعة</div>
+              <div class="sm">إرسال SMS</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== INVOICES ===== -->
+    <section class="page" id="page-invoices">
+      <div class="topbar">
+        <div><h1>الفواتير</h1><div class="sub">أكتوبر 2026</div></div>
+        <div class="top-actions">
+          <div class="search"><i class="ti ti-search"></i> رقم الفاتورة أو اسم المريض…</div>
+          <button class="btn btn-ghost"><i class="ti ti-download"></i> تصدير</button>
+          <button class="btn btn-primary"><i class="ti ti-plus"></i> فاتورة يدوية</button>
+        </div>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="t"><i class="ti ti-cash"></i> إيرادات الشهر</div><div class="v">38,400</div><div class="d up">+12% عن سبتمبر</div></div>
+        <div class="kpi"><div class="t"><i class="ti ti-receipt"></i> فواتير الشهر</div><div class="v">162</div><div class="d">متوسط 237 ريال</div></div>
+        <div class="kpi"><div class="t"><i class="ti ti-clock-exclamation"></i> معلّقة</div><div class="v" style="color:var(--danger)">1,240</div><div class="d warn">8 فواتير</div></div>
+        <div class="kpi"><div class="t"><i class="ti ti-cash-banknote"></i> اليوم</div><div class="v">4,850</div><div class="d">14 فاتورة</div></div>
+      </div>
+      <div class="chips" style="margin-bottom:14px">
+        <span class="chip on">الكل</span><span class="chip">مدفوعة</span><span class="chip">معلّقة</span><span class="chip">ملغاة</span>
+        <span style="flex:1"></span>
+        <span class="chip"><i class="ti ti-calendar"></i> هذا الشهر</span>
+      </div>
+      <div class="card">
+        <table>
+          <tr><th>رقم</th><th>المريض</th><th>البيان</th><th>التاريخ</th><th>طريقة الدفع</th><th>المبلغ</th><th>الحالة</th></tr>
+          <tr class="row"><td>#2451</td><td>محمد العتيبي</td><td>كشف باطنية + تحاليل</td><td>اليوم 09:25</td><td>شبكة (مدى)</td><td><b>240 ريال</b></td><td><span class="badge b-ok">مدفوعة</span></td></tr>
+          <tr class="row"><td>#2450</td><td>عبير الشمري</td><td>كشف باطنية</td><td>اليوم 09:10</td><td>نقدي</td><td><b>150 ريال</b></td><td><span class="badge b-ok">مدفوعة</span></td></tr>
+          <tr class="row"><td>#2449</td><td>لمى الحربي</td><td>متابعة + صرف أدوية</td><td>اليوم 08:40</td><td>—</td><td><b>60 ريال</b></td><td><span class="badge b-dgr">معلّقة</span></td></tr>
+          <tr class="row"><td>#2448</td><td>فهد الزهراني</td><td>تنظيف أسنان</td><td>أمس</td><td>تحويل بنكي</td><td><b>350 ريال</b></td><td><span class="badge b-ok">مدفوعة</span></td></tr>
+          <tr class="row"><td>#2447</td><td>خالد السالم</td><td>كشف عظام + أشعّة</td><td>أمس</td><td>شبكة (مدى)</td><td><b>420 ريال</b></td><td><span class="badge b-ok">مدفوعة</span></td></tr>
+          <tr class="row"><td>#2446</td><td>سعد الدوسري</td><td>كشف جلدية</td><td>11 أكتوبر</td><td>—</td><td><b>150 ريال</b></td><td><span class="badge b-mut">ملغاة</span></td></tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== REPORTS ===== -->
+    <section class="page" id="page-reports">
+      <div class="topbar">
+        <div><h1>التقارير</h1><div class="sub">أداء العيادة — آخر 6 أشهر</div></div>
+        <div class="top-actions">
+          <button class="btn btn-ghost"><i class="ti ti-calendar"></i> مايو — أكتوبر 2026</button>
+          <button class="btn btn-ghost"><i class="ti ti-printer"></i> طباعة</button>
+          <button class="btn btn-primary"><i class="ti ti-download"></i> تصدير PDF</button>
+        </div>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="t"><i class="ti ti-cash"></i> إجمالي الإيرادات</div><div class="v">214,600</div><div class="d up">+18% عن الفترة السابقة</div></div>
+        <div class="kpi"><div class="t"><i class="ti ti-users"></i> مرضى فريدون</div><div class="v">861</div><div class="d">214 مريض جديد</div></div>
+        <div class="kpi"><div class="t"><i class="ti ti-calendar-check"></i> مواعيد مكتملة</div><div class="v">1,432</div><div class="d">نسبة الحضور 91%</div></div>
+        <div class="kpi"><div class="t"><i class="ti ti-calendar-x"></i> لم يحضر</div><div class="v">138</div><div class="d warn">9% — انخفض بعد تذكير SMS</div></div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-h"><b>الإيرادات الشهرية (ألف ريال)</b></div>
+          <div class="cols">
+            <div class="col"><span style="height:52%"></span><em>مايو<br>29</em></div>
+            <div class="col"><span style="height:60%"></span><em>يونيو<br>33</em></div>
+            <div class="col"><span style="height:48%"></span><em>يوليو<br>27</em></div>
+            <div class="col"><span style="height:66%"></span><em>أغسطس<br>36</em></div>
+            <div class="col"><span style="height:72%"></span><em>سبتمبر<br>34</em></div>
+            <div class="col hot"><span style="height:82%"></span><em>أكتوبر<br>38</em></div>
+          </div>
+          <div style="padding:8px 16px 14px;font-size:11.5px;color:var(--muted)">أعلى شهر: أكتوبر — 38,400 ريال</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="card">
+            <div class="card-h"><b>الإيراد حسب القسم</b></div>
+            <div class="pad">
+              <div class="bar-row"><div class="lbl"><span>أسنان</span><span>41%</span></div><div class="bar"><span style="width:41%"></span></div></div>
+              <div class="bar-row"><div class="lbl"><span>باطنية</span><span>26%</span></div><div class="bar"><span style="width:26%"></span></div></div>
+              <div class="bar-row"><div class="lbl"><span>جلدية</span><span>19%</span></div><div class="bar"><span style="width:19%"></span></div></div>
+              <div class="bar-row" style="margin:0"><div class="lbl"><span>عظام وأخرى</span><span>14%</span></div><div class="bar"><span style="width:14%"></span></div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h"><b>أكثر الخدمات طلباً</b></div>
+            <div class="pad">
+              <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px dashed var(--border)"><span>كشف عام</span><b>486</b></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px dashed var(--border)"><span>تنظيف أسنان</span><b>192</b></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px dashed var(--border)"><span>تحليل دم شامل</span><b>167</b></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0"><span>حشو أسنان</span><b>121</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== STAFF ===== -->
+    <section class="page" id="page-staff">
+      <div class="topbar">
+        <div><h1>الأطباء والموظفون</h1><div class="sub">9 مستخدمين نشطين</div></div>
+        <div class="top-actions"><button class="btn btn-primary"><i class="ti ti-user-plus"></i> إضافة مستخدم</button></div>
+      </div>
+      <div class="grid3">
+        <div class="card pad" style="text-align:center">
+          <div class="avatar" style="width:56px;height:56px;font-size:17px;margin:4px auto 10px">س.أ</div>
+          <b>د. سارة أحمد</b>
+          <div style="font-size:12px;color:var(--muted)">باطنية · 12 سنة خبرة</div>
+          <div style="display:flex;gap:6px;justify-content:center;margin-top:10px"><span class="badge b-teal">طبيب</span><span class="badge b-ok">متاحة الآن</span></div>
+          <div style="display:flex;justify-content:space-around;margin-top:13px;padding-top:12px;border-top:1px dashed var(--border);font-size:12px;color:var(--muted)">
+            <div><b style="display:block;color:var(--text);font-size:15px">11</b>مواعيد اليوم</div>
+            <div><b style="display:block;color:var(--text);font-size:15px">4.9</b>التقييم</div>
+          </div>
+        </div>
+        <div class="card pad" style="text-align:center">
+          <div class="avatar" style="width:56px;height:56px;font-size:17px;margin:4px auto 10px;background:var(--info-bg);color:var(--info)">خ.م</div>
+          <b>د. خالد المطيري</b>
+          <div style="font-size:12px;color:var(--muted)">أسنان · 8 سنوات خبرة</div>
+          <div style="display:flex;gap:6px;justify-content:center;margin-top:10px"><span class="badge b-teal">طبيب</span><span class="badge b-warn">في كشف</span></div>
+          <div style="display:flex;justify-content:space-around;margin-top:13px;padding-top:12px;border-top:1px dashed var(--border);font-size:12px;color:var(--muted)">
+            <div><b style="display:block;color:var(--text);font-size:15px">9</b>مواعيد اليوم</div>
+            <div><b style="display:block;color:var(--text);font-size:15px">4.7</b>التقييم</div>
+          </div>
+        </div>
+        <div class="card pad" style="text-align:center">
+          <div class="avatar" style="width:56px;height:56px;font-size:17px;margin:4px auto 10px;background:#fde8e8;color:#9b2c2c">ر.ع</div>
+          <b>د. ريم العلي</b>
+          <div style="font-size:12px;color:var(--muted)">جلدية · 15 سنة خبرة</div>
+          <div style="display:flex;gap:6px;justify-content:center;margin-top:10px"><span class="badge b-teal">طبيب</span><span class="badge b-mut">إجازة اليوم</span></div>
+          <div style="display:flex;justify-content:space-around;margin-top:13px;padding-top:12px;border-top:1px dashed var(--border);font-size:12px;color:var(--muted)">
+            <div><b style="display:block;color:var(--text);font-size:15px">0</b>مواعيد اليوم</div>
+            <div><b style="display:block;color:var(--text);font-size:15px">4.8</b>التقييم</div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-h"><b>بقية الفريق</b></div>
+        <table>
+          <tr><th>الاسم</th><th>الدور</th><th>الصلاحيات</th><th>آخر دخول</th><th>الحالة</th></tr>
+          <tr class="row"><td><div class="cell-p"><div class="avatar">أ.ف</div>أمل فهد</div></td><td>استقبال</td><td>مواعيد · مرضى · انتظار</td><td>اليوم 08:02</td><td><span class="badge b-ok">نشط</span></td></tr>
+          <tr class="row"><td><div class="cell-p"><div class="avatar" style="background:var(--info-bg);color:var(--info)">م.س</div>منى سعد</div></td><td>استقبال</td><td>مواعيد · مرضى · انتظار</td><td>اليوم 08:15</td><td><span class="badge b-ok">نشط</span></td></tr>
+          <tr class="row"><td><div class="cell-p"><div class="avatar">ع.ر</div>عمر راشد</div></td><td>محاسب</td><td>فواتير · تقارير مالية</td><td>أمس 17:40</td><td><span class="badge b-ok">نشط</span></td></tr>
+          <tr class="row"><td><div class="cell-p"><div class="avatar" style="background:#fde8e8;color:#9b2c2c">هـ.ن</div>هند ناصر</div></td><td>مديرة العيادة</td><td>كل الصلاحيات</td><td>اليوم 07:55</td><td><span class="badge b-ok">نشط</span></td></tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== SETTINGS ===== -->
+    <section class="page" id="page-settings">
+      <div class="topbar">
+        <div><h1>الإعدادات</h1><div class="sub">إعدادات العيادة والنظام</div></div>
+        <div class="top-actions"><button class="btn btn-primary"><i class="ti ti-device-floppy"></i> حفظ التغييرات</button></div>
+      </div>
+      <div class="grid2">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="card">
+            <div class="card-h"><b>بيانات العيادة</b></div>
+            <div class="pad">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 14px">
+                <div class="field"><label>اسم العيادة</label><input value="عيادة النور الطبية"></div>
+                <div class="field"><label>رقم الترخيص</label><input value="RC-2024-10388"></div>
+                <div class="field"><label>الهاتف</label><input value="920001234"></div>
+                <div class="field"><label>البريد</label><input value="info@alnoor-clinic.com"></div>
+              </div>
+              <div class="field" style="margin-bottom:0"><label>العنوان</label><input value="الرياض — حي الملقا، طريق الملك فهد"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h"><b>الخدمات والأسعار</b><span class="link">+ خدمة جديدة</span></div>
+            <table>
+              <tr><th>الخدمة</th><th>القسم</th><th>السعر</th><th></th></tr>
+              <tr class="row"><td>كشف عام</td><td>باطنية</td><td><b>150 ريال</b></td><td><i class="ti ti-edit" style="color:var(--faint)"></i></td></tr>
+              <tr class="row"><td>متابعة</td><td>باطنية</td><td><b>80 ريال</b></td><td><i class="ti ti-edit" style="color:var(--faint)"></i></td></tr>
+              <tr class="row"><td>تنظيف أسنان</td><td>أسنان</td><td><b>350 ريال</b></td><td><i class="ti ti-edit" style="color:var(--faint)"></i></td></tr>
+              <tr class="row"><td>تحليل دم شامل</td><td>مختبر</td><td><b>180 ريال</b></td><td><i class="ti ti-edit" style="color:var(--faint)"></i></td></tr>
+            </table>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="card">
+            <div class="card-h"><b>أوقات الدوام</b></div>
+            <div class="pad">
+              <div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px dashed var(--border)"><span>الأحد — الخميس</span><b>09:00 — 21:00</b></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px dashed var(--border)"><span>الجمعة</span><b style="color:var(--danger)">مغلق</b></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0"><span>السبت</span><b>16:00 — 22:00</b></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h"><b>التذكيرات والرسائل</b></div>
+            <div class="pad" style="display:flex;flex-direction:column;gap:11px">
+              <label style="display:flex;justify-content:space-between;align-items:center;font-size:13px">تذكير SMS قبل الموعد بـ 24 ساعة <input type="checkbox" checked style="width:auto"></label>
+              <label style="display:flex;justify-content:space-between;align-items:center;font-size:13px">رسالة تأكيد عند الحجز الأونلاين <input type="checkbox" checked style="width:auto"></label>
+              <label style="display:flex;justify-content:space-between;align-items:center;font-size:13px">رسالة بعد الكشف مع رابط الوصفة <input type="checkbox" style="width:auto"></label>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h"><b>الحجز الأونلاين</b></div>
+            <div class="pad" style="display:flex;flex-direction:column;gap:11px">
+              <label style="display:flex;justify-content:space-between;align-items:center;font-size:13px">تفعيل صفحة الحجز العامة <input type="checkbox" checked style="width:auto"></label>
+              <div style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:9px;padding:9px 12px;font-size:12.5px;color:var(--muted)">
+                <i class="ti ti-link"></i> alnoor.clinic/book <span style="margin-right:auto;color:var(--teal);font-weight:600;cursor:pointer">نسخ</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+function go(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.querySelectorAll('.nav-item[data-page]').forEach(n=>n.classList.toggle('active',n.dataset.page===page));
+  window.scrollTo({top:0});
+}
+document.querySelectorAll('.nav-item[data-page]').forEach(n=>n.addEventListener('click',()=>go(n.dataset.page)));
+function enterApp(){
+  document.getElementById('view-login').classList.add('hidden');
+  document.getElementById('view-booking').classList.add('hidden');
+  document.getElementById('view-app').classList.remove('hidden');
+}
+function showLogin(){
+  document.getElementById('view-app').classList.add('hidden');
+  document.getElementById('view-booking').classList.add('hidden');
+  document.getElementById('view-login').classList.remove('hidden');
+}
+function showBooking(){
+  document.getElementById('view-app').classList.add('hidden');
+  document.getElementById('view-login').classList.add('hidden');
+  document.getElementById('view-booking').classList.remove('hidden');
+}
+</script>
+</body>
+</html>

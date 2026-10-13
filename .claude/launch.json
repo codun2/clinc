@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "clinic-design",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "4620", "--directory", "design"],
+      "port": 4620
+    }
+  ]
+}

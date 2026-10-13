@@ -1,0 +1,25 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Env / secrets
+.env
+*/.env
+!*/.env.example
+
+# PHP / Laravel (api also has its own .gitignore)
+/api/vendor
+/api/node_modules
+/api/public/build
+/api/public/hot
+/api/public/storage
+/api/storage/*.key
+/api/.phpunit.cache
+*.log
+
+# Node
+node_modules
+
+# User-uploaded runtime data (images). Keep the folder, not its contents.
+/api/public/uploads/*
+!/api/public/uploads/.gitkeep
