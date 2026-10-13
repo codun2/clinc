@@ -26,6 +26,21 @@ class AdminStaffController extends Controller
     }
 
     /**
+     * الأطباء فقط (أصحاب مسمّى وظيفي) — متاح لكل الموظفين لقوائم الاختيار
+     * (موعد جديد، فلتر المواعيد) دون الحاجة لصلاحية staff الكاملة.
+     */
+    public function doctors(): JsonResponse
+    {
+        $doctors = User::whereIn('role', ['staff', 'admin'])
+            ->whereNotNull('title')
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'title']);
+
+        return response()->json(['doctors' => $doctors]);
+    }
+
+    /**
      * Public "meet the team" list for a clinic's own page — no contact details.
      * Scoped to ?clinic=<slug>; without a valid slug returns an empty team.
      */

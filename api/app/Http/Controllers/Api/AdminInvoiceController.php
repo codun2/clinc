@@ -38,6 +38,18 @@ class AdminInvoiceController extends Controller
                 'pending_count' => Invoice::where('status', 'pending')->count(),
                 'today_total'   => (float) Invoice::where('status', 'paid')->whereDate('created_at', today())->sum('total'),
                 'today_count'   => Invoice::whereDate('created_at', today())->count(),
+                // سلسلة آخر 6 أشهر لمخطط التقارير
+                'monthly'       => collect(range(5, 0))->map(function ($i) {
+                    $m = now()->subMonths($i);
+
+                    return [
+                        'month' => $m->format('Y-m'),
+                        'total' => (float) Invoice::where('status', 'paid')
+                            ->whereYear('created_at', $m->year)
+                            ->whereMonth('created_at', $m->month)
+                            ->sum('total'),
+                    ];
+                }),
             ],
         ]);
     }

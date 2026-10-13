@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>احجز موعدك — عيادة النور الطبية</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.11.0/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<div style="background:var(--surface);border-bottom:1px solid var(--border)">
+  <div class="booking-wrap" style="padding:14px 20px;display:flex;align-items:center;justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:36px;height:36px;border-radius:10px;background:var(--teal);display:grid;place-items:center;color:#fff;font-size:19px"><i class="ti ti-heartbeat"></i></div>
+      <div><b id="clinic-name">عيادة النور الطبية</b><small style="display:block;color:var(--muted);font-size:11px" id="clinic-sub">احجز موعدك أونلاين</small></div>
+    </div>
+    <a class="btn btn-ghost" href="/"><i class="ti ti-login-2"></i> دخول الموظفين</a>
+  </div>
+</div>
+<div class="booking-wrap" id="wrap">
+  <h1 style="font-size:21px;font-weight:700">احجز موعدك في دقيقة</h1>
+  <p style="color:var(--muted);font-size:13px;margin-top:3px">اختر القسم والطبيب والوقت المناسب — يصلك تأكيد وتذكير برسالة SMS</p>
+  <div id="content"><div class="empty"><span class="spin" style="border-color:var(--border);border-top-color:var(--teal)"></span></div></div>
+</div>
+<script src="/assets/api.js"></script>
+<script>
+const SLUG = new URLSearchParams(location.search).get('c') || 'alnoor';
+const S = { department: '', doctor_id: '', doctor_name: '', date: new Date(Date.now() + 86400000).toISOString().slice(0, 10), time: '', info: null };
+
+async function boot() {
+  try { S.info = await API.get('/booking/' + SLUG + '/info'); }
+  catch { document.getElementById('content').innerHTML = '<div class="empty">تعذّر تحميل صفحة الحجز</div>'; return; }
+  document.getElementById('clinic-name').textContent = S.info.clinic.name;
+  if (S.info.departments.length) S.department = S.info.departments[0];
+  render();
+}
+
+async function loadSlots() {
+  try {
+    const d = await API.get('/booking/' + SLUG + '/slots?date=' + S.date + (S.doctor_id ? '&doctor_id=' + S.doctor_id : ''));
+    return d.slots;
+  } catch { return []; }
+}
+
+async function render() {
+  const slots = await loadSlots();
+  const dateLabel = new Date(S.date).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' });
+  document.getElementById('content').innerHTML = `
+  <div class="steps">
+    <div class="step on"><span class="n">1</span> القسم والطبيب</div><div class="step-sep"></div>
+    <div class="step on"><span class="n">2</span> الموعد</div><div class="step-sep"></div>
+    <div class="step ${S.time ? 'on' : ''}"><span class="n">3</span> بياناتك</div>
+  </div>
+  <div class="grid2">
+    <div>
+      <div class="card" style="margin-bottom:14px"><div class="card-h"><b>اختر القسم</b></div>
+        <div class="pad chips">${S.info.departments.map((d) => `<span class="chip ${d === S.department ? 'on' : ''}" data-dep="${d}">${d}</span>`).join('') || '<span style="color:var(--faint);font-size:13px">عام</span>'}</div></div>
+      <div class="card" style="margin-bottom:14px"><div class="card-h"><b>اختر الطبيب</b></div>
+        <div class="pad" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px">
+          ${S.info.doctors.map((x) => `<div class="doc-card ${x.id == S.doctor_id ? 'on' : ''}" data-doc="${x.id}" data-name="${x.name}">
+            <div class="avatar" style="margin:0 auto 8px;width:46px;height:46px;font-size:15px">${initials(x.name)}</div>
+            <b style="font-size:13.5px">${x.name}</b><div style="font-size:11.5px;color:var(--muted)">${x.title || ''}</div></div>`).join('')}
+        </div></div>
+      <div class="card"><div class="card-h"><b>الأوقات المتاحة — ${dateLabel}</b>
+        <input type="date" id="pick-date" value="${S.date}" style="border:1px solid var(--border);border-radius:8px;padding:5px 8px;font-family:inherit;font-size:12px"></div>
+        <div class="pad" style="display:grid;grid-template-columns:repeat(5,1fr);gap:9px">
+          ${slots.map((s) => `<div class="slot ${!s.available ? 'off' : s.time === S.time ? 'on' : ''}" ${s.available ? `data-time="${s.time}"` : ''}>${s.time}</div>`).join('')}
+        </div></div>
+    </div>
+    <div class="card"><div class="card-h"><b>ملخص الحجز</b></div><div class="pad">
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">القسم</span><b>${S.department || '—'}</b></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">الطبيب</span><b>${S.doctor_name || 'أي طبيب'}</b></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">الموعد</span><b>${S.time ? dateLabel + ' · ' + S.time : '—'}</b></div>
+      <div class="field" style="margin-top:12px"><label>الاسم الكامل *</label><input id="b-name" placeholder="مثال: محمد العتيبي"></div>
+      <div class="field"><label>رقم الجوال *</label><input id="b-phone" placeholder="05xxxxxxxx"></div>
+      <button class="btn btn-primary" id="b-confirm" style="width:100%;justify-content:center;padding:12px;margin-top:4px">تأكيد الحجز <i class="ti ti-circle-check"></i></button>
+      <div style="font-size:11.5px;color:var(--muted);text-align:center;margin-top:10px"><i class="ti ti-message"></i> سيصلك تأكيد وتذكير قبل الموعد بـ 24 ساعة</div>
+    </div></div>
+  </div>`;
+
+  document.querySelectorAll('[data-dep]').forEach((c) => c.onclick = () => { S.department = c.dataset.dep; render(); });
+  document.querySelectorAll('[data-doc]').forEach((c) => c.onclick = () => { S.doctor_id = c.dataset.doc; S.doctor_name = c.dataset.name; S.time = ''; render(); });
+  document.querySelectorAll('[data-time]').forEach((s) => s.onclick = () => { S.time = s.dataset.time; render(); });
+  document.getElementById('pick-date').onchange = (e) => { S.date = e.target.value; S.time = ''; render(); };
+  document.getElementById('b-confirm').onclick = confirmBooking;
+}
+
+async function confirmBooking(e) {
+  const name = document.getElementById('b-name').value.trim();
+  const phone = document.getElementById('b-phone').value.trim();
+  if (!name || !phone) { toast('أدخل الاسم ورقم الجوال', 'err'); return; }
+  if (!S.time) { toast('اختر وقتاً متاحاً', 'err'); return; }
+  e.target.disabled = true;
+  try {
+    const d = await API.post('/booking/' + SLUG + '/book', { name, phone, department: S.department, doctor_id: S.doctor_id || null, scheduled_at: S.date + ' ' + S.time + ':00' });
+    document.getElementById('content').innerHTML = `<div class="card" style="max-width:460px;margin:40px auto;text-align:center;padding:36px 24px">
+      <div style="width:64px;height:64px;border-radius:50%;background:var(--ok-bg);color:var(--ok);display:grid;place-items:center;font-size:34px;margin:0 auto 16px"><i class="ti ti-check"></i></div>
+      <h2 style="font-size:19px;font-weight:700">تم تأكيد حجزك</h2>
+      <p style="color:var(--muted);font-size:13.5px;margin-top:8px;line-height:1.9">${esc(d.message)}<br>الموعد: <b>${new Date(d.appointment.scheduled_at).toLocaleString('ar-SA-u-ca-gregory-nu-latn', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</b></p>
+      <a class="btn btn-ghost" href="/book.html" style="margin-top:18px">حجز موعد آخر</a></div>`;
+  } catch (ex) { toast(ex.message, 'err'); e.target.disabled = false; }
+}
+boot();
+</script>
+</body>
+</html>

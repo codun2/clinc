@@ -12,18 +12,18 @@ class AdminSettingController extends Controller
 {
     /** Editable general settings and their defaults. */
     private const KEYS = [
-        'clinic_name'    => 'Layla Vet Clinic',
-        'phone'          => '+961 70 123 456',
-        'email'          => 'hello@laylavet.com',
-        'address'        => 'Hamra Street, Beirut',
-        'weekday_hours'  => '08:00 - 20:00',
-        'weekend_hours'  => '09:00 - 18:00',
-        'emergency_24_7' => '1',
+        'clinic_name'    => 'عيادة النور الطبية',
+        'phone'          => '920001234',
+        'email'          => 'info@alnoor-clinic.com',
+        'address'        => 'الرياض — حي الملقا، طريق الملك فهد',
+        'weekday_hours'  => '09:00 - 21:00',
+        'weekend_hours'  => '16:00 - 22:00',
+        'emergency_24_7' => '0',
         'online_booking' => '1',
         'clinic_photo'   => '',
         // Appearance / theme (Level-2 self-service customization)
-        'primary_color'  => '#FF7A4D',
-        'bg_color'       => '#FFF6EF',
+        'primary_color'  => '#0e8a8a',
+        'bg_color'       => '#f4f6f8',
         'hero_title'     => '',
         'hero_lead'      => '',
         'hero_badge'     => '',

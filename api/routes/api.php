@@ -42,6 +42,10 @@ Route::prefix('admin')->group(function () {
         // لوحة التحكم — متاحة لكل الموظفين
         Route::get('dashboard', [AdminDashboardController::class, 'index']);
 
+        // قوائم مرجعية متاحة لكل الموظفين (اختيار طبيب/خدمة في النماذج)
+        Route::get('doctors', [AdminStaffController::class, 'doctors']);
+        Route::get('services', [AdminServiceController::class, 'index']);
+
         // المرضى
         Route::middleware('perm:patients')->group(function () {
             Route::get('patients', [AdminPatientController::class, 'index']);
@@ -97,7 +101,6 @@ Route::prefix('admin')->group(function () {
             Route::get('settings', [AdminSettingController::class, 'index']);
             Route::patch('settings', [AdminSettingController::class, 'update']);
             Route::post('settings/photo', [AdminSettingController::class, 'uploadPhoto']);
-            Route::get('services', [AdminServiceController::class, 'index']);
             Route::post('services', [AdminServiceController::class, 'store']);
             Route::patch('services/{service}', [AdminServiceController::class, 'update']);
             Route::delete('services/{service}', [AdminServiceController::class, 'destroy']);

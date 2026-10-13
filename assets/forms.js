@@ -1,0 +1,314 @@
+// عيادتي — شاشة الكشف الموحّدة + النماذج (مودالات)
+
+// ===== بدء كشف ثم فتح الشاشة =====
+async function startConsultation(payload) {
+  try {
+    const d = await API.post('/admin/consultations', payload);
+    App.go('consult', d.consultation.id);
+    App.loadBadges();
+  } catch (ex) { toast(ex.message, 'err'); }
+}
+
+// ===== شاشة الكشف الموحّدة =====
+Pages.consult = async (el, id) => {
+  const d = await API.get('/admin/consultations/' + id);
+  const c = d.consultation; const p = c.patient;
+  const [svc, prev] = await Promise.all([
+    API.get('/admin/services'),
+    API.get('/admin/patients/' + p.id),
+  ]);
+  const rx = c.prescription || [];
+  const orders = c.orders || [];
+  const visits = (prev.patient.consultations || []).filter((v) => v.id !== c.id).slice(0, 4);
+
+  el.innerHTML = `
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" id="c-back" style="padding:8px 11px"><i class="ti ti-arrow-right"></i></button>
+      <div class="avatar" style="width:44px;height:44px;font-size:14px">${esc(initials(p.name))}</div>
+      <div><h1 style="font-size:17px">${esc(p.name)} <span style="font-size:13px;color:var(--muted);font-weight:400">· ${ageOf(p.birthdate)} · ${p.gender === 'female' ? 'أنثى' : 'ذكر'}</span></h1>
+        <div class="sub">ملف ${esc(p.file_no)}</div></div>
+    </div>
+    <div class="top-actions">
+      ${p.allergies ? `<span class="badge b-warn"><i class="ti ti-alert-triangle"></i> حساسية: ${esc(p.allergies)}</span>` : ''}
+      <span class="badge b-teal">كشف</span>
+    </div>
+  </div>
+  <div class="consult-grid">
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="card pad">
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px"><i class="ti ti-activity-heartbeat" style="color:var(--teal)"></i> العلامات الحيوية</div>
+        <div class="vitals">
+          <div><div class="vl">الضغط</div><input id="v-bp" value="${esc(c.bp || '')}" placeholder="120/80"></div>
+          <div><div class="vl">النبض</div><input id="v-pulse" value="${c.pulse || ''}" placeholder="72"></div>
+          <div><div class="vl">الحرارة</div><input id="v-temp" value="${c.temp || ''}" placeholder="36.8"></div>
+          <div><div class="vl">الوزن</div><input id="v-weight" value="${c.weight || ''}" placeholder="كجم"></div>
+        </div>
+      </div>
+      <div class="card pad">
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px"><i class="ti ti-folders" style="color:var(--teal)"></i> زيارات سابقة</div>
+        ${visits.length ? visits.map((v) => `<div class="visit-mini" data-v="${v.id}"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:13px">${esc(v.diagnosis || 'كشف')}</b><i class="ti ti-chevron-left" style="color:var(--faint);font-size:14px"></i></div><div style="font-size:11px;color:var(--muted)">${dateOf(v.finished_at || v.created_at)}${v.doctor ? ' · ' + esc(v.doctor.name) : ''}</div></div>`).join('') : '<div class="empty" style="padding:14px">لا زيارات سابقة</div>'}
+      </div>
+    </div>
+
+    <div class="card pad">
+      <div style="font-size:14px;font-weight:600;margin-bottom:10px"><i class="ti ti-notes" style="color:var(--teal)"></i> ملاحظة الكشف</div>
+      <div class="field"><label>الشكوى</label><textarea id="c-complaint" rows="2">${esc(c.complaint || '')}</textarea></div>
+      <div class="field"><label>الفحص</label><textarea id="c-exam" rows="2">${esc(c.examination || '')}</textarea></div>
+      <div class="field"><label>التشخيص</label><textarea id="c-diag" rows="2">${esc(c.diagnosis || '')}</textarea></div>
+      <div style="font-size:13px;font-weight:600;margin:4px 0 8px"><i class="ti ti-prescription" style="color:var(--teal)"></i> الوصفة</div>
+      <div id="rx-list"></div>
+      <div class="rx sugg" style="border-style:dashed;color:var(--faint);position:relative">
+        <i class="ti ti-plus" style="color:var(--faint)"></i>
+        <input id="rx-input" placeholder="أضف دواء…" style="border:none;outline:none;background:transparent;flex:1;font-family:inherit;font-size:13px;color:var(--text)">
+        <span style="font-size:11px">تحقق تلقائي من الحساسية</span>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="card pad">
+        <div style="font-size:13px;font-weight:600;margin-bottom:9px"><i class="ti ti-flask" style="color:var(--teal)"></i> طلبات</div>
+        <div id="orders-list" style="display:flex;flex-direction:column;gap:7px"></div>
+        <div class="rx sugg" style="border-style:dashed;color:var(--faint);margin-top:7px;position:relative">
+          <i class="ti ti-plus" style="color:var(--faint)"></i>
+          <input id="order-input" placeholder="أضف طلب/تحليل…" style="border:none;outline:none;background:transparent;flex:1;font-family:inherit;font-size:13px;color:var(--text)">
+        </div>
+      </div>
+      <div class="card pad">
+        <div style="font-size:13px;font-weight:600;margin-bottom:9px"><i class="ti ti-receipt"></i> بنود الفاتورة</div>
+        <div id="bill-list"></div>
+        <select id="svc-pick" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:8px;font-family:inherit;font-size:12.5px;margin-top:4px">
+          <option value="">+ أضف خدمة للفاتورة…</option>
+          ${svc.services.map((x) => `<option value="${x.id}" data-name="${esc(x.name)}" data-price="${x.price}">${esc(x.name)} — ${money(x.price)} ريال</option>`).join('')}
+        </select>
+        <div style="display:flex;justify-content:space-between;font-size:13px;border-top:1px dashed var(--border);margin-top:10px;padding-top:9px"><b>الإجمالي</b><b style="color:var(--teal-dark)" id="bill-total">0 ريال</b></div>
+      </div>
+      <div class="finish">
+        <div style="font-size:12px;opacity:.9;margin-bottom:9px">طريقة الدفع</div>
+        <select id="pay-method" style="width:100%;border:none;border-radius:8px;padding:9px;font-family:inherit;font-size:13px;margin-bottom:9px">
+          <option value="cash">نقدي</option><option value="card">شبكة (مدى)</option><option value="transfer">تحويل بنكي</option><option value="">معلّقة (دفع لاحق)</option>
+        </select>
+        <div class="big" id="finish-btn">حفظ · فاتورة · إنهاء الكشف</div>
+        <div style="display:flex;gap:7px;margin-top:8px"><div class="sm" id="followup-btn">موعد متابعة</div></div>
+      </div>
+    </div>
+  </div>`;
+
+  // حالة محلية
+  const state = { rx: [...rx], orders: [...orders], bill: [], followup: null };
+
+  const renderRx = () => {
+    el.querySelector('#rx-list').innerHTML = state.rx.map((r, i) =>
+      `<div class="rx"><i class="ti ti-pill"></i><div style="flex:1">${esc(r.drug)}${r.dose || r.duration ? ` <span style="color:var(--muted)">· ${esc([r.dose, r.duration].filter(Boolean).join(' · '))}</span>` : ''}</div><i class="ti ti-x x" data-i="${i}"></i></div>`).join('');
+    el.querySelectorAll('#rx-list .x').forEach((x) => x.onclick = () => { state.rx.splice(x.dataset.i, 1); renderRx(); saveDraft(); });
+  };
+  const renderOrders = () => {
+    el.querySelector('#orders-list').innerHTML = state.orders.map((o, i) =>
+      `<div class="visit-mini" style="margin:0;display:flex;justify-content:space-between;align-items:center">${esc(o)} <i class="ti ti-x" style="color:var(--faint);cursor:pointer" data-i="${i}"></i></div>`).join('') || '<div style="font-size:12px;color:var(--faint)">لا طلبات</div>';
+    el.querySelectorAll('#orders-list .ti-x').forEach((x) => x.onclick = () => { state.orders.splice(x.dataset.i, 1); renderOrders(); saveDraft(); });
+  };
+  const renderBill = () => {
+    el.querySelector('#bill-list').innerHTML = state.bill.map((b, i) =>
+      `<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:5px 0"><span>${esc(b.name)}</span><span>${money(b.price)} <i class="ti ti-x" style="color:var(--faint);cursor:pointer;font-size:12px" data-i="${i}"></i></span></div>`).join('');
+    el.querySelector('#bill-total').textContent = money(state.bill.reduce((a, b) => a + Number(b.price), 0)) + ' ريال';
+    el.querySelectorAll('#bill-list .ti-x').forEach((x) => x.onclick = () => { state.bill.splice(x.dataset.i, 1); renderBill(); });
+  };
+  renderRx(); renderOrders(); renderBill();
+
+  // حفظ تدريجي (debounced) — يرجع تحذير الحساسية
+  let st;
+  const saveDraft = () => {
+    clearTimeout(st);
+    st = setTimeout(async () => {
+      try {
+        const r = await API.patch('/admin/consultations/' + c.id, {
+          bp: el.querySelector('#v-bp').value || null,
+          pulse: el.querySelector('#v-pulse').value || null,
+          temp: el.querySelector('#v-temp').value || null,
+          weight: el.querySelector('#v-weight').value || null,
+          complaint: el.querySelector('#c-complaint').value || null,
+          examination: el.querySelector('#c-exam').value || null,
+          diagnosis: el.querySelector('#c-diag').value || null,
+          prescription: state.rx, orders: state.orders,
+        });
+        (r.warnings || []).forEach((w) => toast(w, 'warn'));
+      } catch (ex) { toast(ex.message, 'err'); }
+    }, 700);
+  };
+  ['#v-bp', '#v-pulse', '#v-temp', '#v-weight', '#c-complaint', '#c-exam', '#c-diag'].forEach((s) => el.querySelector(s).addEventListener('input', saveDraft));
+
+  // إضافة دواء (Enter)
+  el.querySelector('#rx-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.value.trim()) { e.preventDefault(); state.rx.push({ drug: e.target.value.trim() }); e.target.value = ''; renderRx(); saveDraft(); }
+  });
+  el.querySelector('#order-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.value.trim()) { e.preventDefault(); state.orders.push(e.target.value.trim()); e.target.value = ''; renderOrders(); saveDraft(); }
+  });
+  // إضافة بند فاتورة
+  el.querySelector('#svc-pick').onchange = (e) => {
+    const o = e.target.selectedOptions[0];
+    if (o.value) { state.bill.push({ name: o.dataset.name, price: Number(o.dataset.price) }); renderBill(); e.target.value = ''; }
+  };
+  // موعد متابعة
+  el.querySelector('#followup-btn').onclick = () => {
+    const def = new Date(); def.setDate(def.getDate() + 7);
+    const val = prompt('تاريخ موعد المتابعة (YYYY-MM-DD):', def.toISOString().slice(0, 10));
+    if (val) { state.followup = val + ' 10:00:00'; toast('سيُحجز موعد متابعة ' + val + ' عند الإنهاء'); }
+  };
+  el.querySelector('#c-back').onclick = () => App.go('patient', p.id);
+
+  // إنهاء الكشف — خطوة واحدة
+  el.querySelector('#finish-btn').onclick = async (e) => {
+    if (!state.bill.length) { toast('أضف بنداً واحداً على الأقل للفاتورة', 'err'); return; }
+    e.target.style.opacity = '.6';
+    try {
+      const body = { items: state.bill };
+      const m = el.querySelector('#pay-method').value;
+      if (m) body.method = m;
+      if (state.followup) body.followup_at = state.followup;
+      const r = await API.post('/admin/consultations/' + c.id + '/finish', body);
+      toast('تم إنهاء الكشف — فاتورة #' + r.invoice.number + ' (' + money(r.invoice.total) + ' ريال)');
+      App.loadBadges();
+      App.go('patient', p.id);
+    } catch (ex) { toast(ex.message, 'err'); e.target.style.opacity = '1'; }
+  };
+};
+
+// ===== نموذج المريض =====
+function PatientForm(p = null) {
+  const v = (k) => esc(p?.[k] || '');
+  const close = openModal({
+    title: p ? 'تعديل بيانات المريض' : 'مريض جديد',
+    body: `
+      <div class="field"><label>الاسم الكامل *</label><input id="f-name" value="${v('name')}"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
+        <div class="field"><label>الجوال *</label><input id="f-phone" value="${v('phone')}" placeholder="05xxxxxxxx"></div>
+        <div class="field"><label>الجنس</label><select id="f-gender"><option value="male" ${p?.gender === 'male' ? 'selected' : ''}>ذكر</option><option value="female" ${p?.gender === 'female' ? 'selected' : ''}>أنثى</option></select></div>
+        <div class="field"><label>تاريخ الميلاد</label><input id="f-bd" type="date" value="${p?.birthdate ? p.birthdate.slice(0, 10) : ''}"></div>
+        <div class="field"><label>الهوية</label><input id="f-nid" value="${v('national_id')}"></div>
+        <div class="field"><label>فصيلة الدم</label><input id="f-blood" value="${v('blood_type')}" placeholder="O+"></div>
+        <div class="field"><label>جهة الطوارئ</label><input id="f-emg" value="${v('emergency_phone')}"></div>
+      </div>
+      <div class="field"><label>الحساسية (تظهر كتحذير في الكشف)</label><input id="f-allergy" value="${v('allergies')}"></div>
+      <div class="field"><label>الحالات المزمنة</label><input id="f-chronic" value="${v('chronic_conditions')}"></div>
+      <div class="field" style="margin:0"><label>العنوان</label><input id="f-addr" value="${v('address')}"></div>`,
+    footer: `<button class="btn btn-primary" id="f-save">${p ? 'حفظ' : 'إضافة المريض'}</button><button class="btn btn-ghost" id="f-cancel">إلغاء</button>`,
+    width: 540,
+    onOpen: (root, close) => {
+      root.querySelector('#f-cancel').onclick = close;
+      root.querySelector('#f-save').onclick = async (e) => {
+        const body = {
+          name: root.querySelector('#f-name').value.trim(), phone: root.querySelector('#f-phone').value.trim(),
+          gender: root.querySelector('#f-gender').value, birthdate: root.querySelector('#f-bd').value || null,
+          national_id: root.querySelector('#f-nid').value || null, blood_type: root.querySelector('#f-blood').value || null,
+          emergency_phone: root.querySelector('#f-emg').value || null, allergies: root.querySelector('#f-allergy').value || null,
+          chronic_conditions: root.querySelector('#f-chronic').value || null, address: root.querySelector('#f-addr').value || null,
+        };
+        e.target.disabled = true;
+        try {
+          const r = p ? await API.patch('/admin/patients/' + p.id, body) : await API.post('/admin/patients', body);
+          close(); toast(p ? 'تم تحديث البيانات' : 'تم إنشاء ملف المريض');
+          App.go('patient', r.patient.id);
+        } catch (ex) { toast(ex.message, 'err'); e.target.disabled = false; }
+      };
+    },
+  });
+}
+
+// ===== نموذج موعد جديد =====
+async function AppointmentForm() {
+  const docs = await API.get('/admin/doctors');
+  openModal({
+    title: 'موعد جديد',
+    body: `
+      <div class="field sugg" style="position:relative"><label>المريض *</label><input id="a-patient" placeholder="ابحث بالاسم أو الجوال…" autocomplete="off"><input type="hidden" id="a-pid"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
+        <div class="field"><label>الطبيب</label><select id="a-doc"><option value="">—</option>${docs.doctors.map((x) => `<option value="${x.id}" data-t="${esc(x.title || '')}">${esc(x.name)}</option>`).join('')}</select></div>
+        <div class="field"><label>القسم</label><input id="a-dep" placeholder="باطنية…"></div>
+        <div class="field"><label>التاريخ والوقت *</label><input id="a-dt" type="datetime-local"></div>
+        <div class="field"><label>النوع</label><select id="a-type"><option value="new">كشف جديد</option><option value="followup">متابعة</option></select></div>
+      </div>
+      <div class="field" style="margin:0"><label>السبب</label><input id="a-reason"></div>`,
+    footer: `<button class="btn btn-primary" id="a-save">حجز الموعد</button><button class="btn btn-ghost" id="a-cancel">إلغاء</button>`,
+    width: 520,
+    onOpen: (root, close) => {
+      const inp = root.querySelector('#a-patient');
+      attachSuggest(inp, async (q) => (await API.get('/admin/patients?q=' + encodeURIComponent(q))).data,
+        (p) => { inp.value = p.name; root.querySelector('#a-pid').value = p.id; },
+        (p) => `${esc(p.name)} <span style="color:var(--muted);font-size:11px">· ${esc(p.phone)} · ملف ${esc(p.file_no)}</span>`);
+      root.querySelector('#a-doc').onchange = (e) => { const t = e.target.selectedOptions[0]?.dataset.t; if (t && !root.querySelector('#a-dep').value) root.querySelector('#a-dep').value = ''; };
+      root.querySelector('#a-cancel').onclick = close;
+      root.querySelector('#a-save').onclick = async (e) => {
+        const pid = root.querySelector('#a-pid').value;
+        if (!pid) { toast('اختر المريض من القائمة', 'err'); return; }
+        if (!root.querySelector('#a-dt').value) { toast('حدّد التاريخ والوقت', 'err'); return; }
+        e.target.disabled = true;
+        try {
+          await API.post('/admin/appointments', {
+            patient_id: pid, doctor_id: root.querySelector('#a-doc').value || null,
+            department: root.querySelector('#a-dep').value || null, type: root.querySelector('#a-type').value,
+            reason: root.querySelector('#a-reason').value || null,
+            scheduled_at: root.querySelector('#a-dt').value.replace('T', ' ') + ':00',
+          });
+          close(); toast('تم حجز الموعد'); App.go('appointments');
+        } catch (ex) { toast(ex.message, 'err'); e.target.disabled = false; }
+      };
+    },
+  });
+}
+
+// ===== فاتورة يدوية =====
+async function InvoiceForm() {
+  const svc = await API.get('/admin/services');
+  const bill = [];
+  openModal({
+    title: 'فاتورة يدوية',
+    body: `
+      <div class="field sugg" style="position:relative"><label>المريض *</label><input id="i-patient" placeholder="ابحث…" autocomplete="off"><input type="hidden" id="i-pid"></div>
+      <div class="field"><label>أضف خدمة</label><select id="i-svc"><option value="">اختر…</option>${svc.services.map((x) => `<option value="${x.id}" data-name="${esc(x.name)}" data-price="${x.price}">${esc(x.name)} — ${money(x.price)} ريال</option>`).join('')}</select></div>
+      <div id="i-items" style="margin-bottom:10px"></div>
+      <div class="field" style="margin:0"><label>طريقة الدفع</label><select id="i-method"><option value="cash">نقدي</option><option value="card">شبكة</option><option value="transfer">تحويل</option><option value="">معلّقة</option></select></div>`,
+    footer: `<button class="btn btn-primary" id="i-save">إنشاء الفاتورة</button><button class="btn btn-ghost" id="i-cancel">إلغاء</button>`,
+    width: 480,
+    onOpen: (root, close) => {
+      const inp = root.querySelector('#i-patient');
+      attachSuggest(inp, async (q) => (await API.get('/admin/patients?q=' + encodeURIComponent(q))).data,
+        (p) => { inp.value = p.name; root.querySelector('#i-pid').value = p.id; },
+        (p) => `${esc(p.name)} <span style="color:var(--muted);font-size:11px">· ملف ${esc(p.file_no)}</span>`);
+      const render = () => {
+        root.querySelector('#i-items').innerHTML = bill.map((b, i) => `<div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px dashed var(--border)"><span>${esc(b.name)}</span><span>${money(b.price)} <i class="ti ti-x" style="cursor:pointer;color:var(--faint)" data-i="${i}"></i></span></div>`).join('') + (bill.length ? `<div style="display:flex;justify-content:space-between;font-size:13px;padding-top:8px;font-weight:700"><span>الإجمالي</span><span style="color:var(--teal-dark)">${money(bill.reduce((a, b) => a + b.price, 0))} ريال</span></div>` : '');
+        root.querySelectorAll('#i-items .ti-x').forEach((x) => x.onclick = () => { bill.splice(x.dataset.i, 1); render(); });
+      };
+      root.querySelector('#i-svc').onchange = (e) => { const o = e.target.selectedOptions[0]; if (o.value) { bill.push({ name: o.dataset.name, price: Number(o.dataset.price) }); render(); e.target.value = ''; } };
+      root.querySelector('#i-cancel').onclick = close;
+      root.querySelector('#i-save').onclick = async (ev) => {
+        const pid = root.querySelector('#i-pid').value;
+        if (!pid || !bill.length) { toast('اختر المريض وأضف بنداً', 'err'); return; }
+        ev.target.disabled = true;
+        try {
+          const m = root.querySelector('#i-method').value;
+          await API.post('/admin/invoices', { patient_id: pid, items: bill, method: m || undefined });
+          close(); toast('تم إنشاء الفاتورة'); App.go('invoices');
+        } catch (ex) { toast(ex.message, 'err'); ev.target.disabled = false; }
+      };
+    },
+  });
+}
+
+// ===== تحصيل فاتورة معلّقة =====
+function PayInvoice(id, done) {
+  openModal({
+    title: 'تحصيل الفاتورة',
+    body: `<div class="field" style="margin:0"><label>طريقة الدفع</label><select id="pay-m"><option value="cash">نقدي</option><option value="card">شبكة (مدى)</option><option value="transfer">تحويل بنكي</option></select></div>`,
+    footer: `<button class="btn btn-primary" id="pay-ok">تأكيد الدفع</button><button class="btn btn-ghost" id="pay-cancel">إلغاء</button>`,
+    width: 380,
+    onOpen: (root, close) => {
+      root.querySelector('#pay-cancel').onclick = close;
+      root.querySelector('#pay-ok').onclick = async (e) => {
+        e.target.disabled = true;
+        try { await API.patch('/admin/invoices/' + id + '/pay', { method: root.querySelector('#pay-m').value }); close(); toast('تم التحصيل'); done?.(); }
+        catch (ex) { toast(ex.message, 'err'); e.target.disabled = false; }
+      };
+    },
+  });
+}

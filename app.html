@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>عيادتي — لوحة العيادة</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.11.0/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="mark"><i class="ti ti-heartbeat"></i></div>
+      <div><b>عيادتي</b><small id="brand-clinic">—</small></div>
+    </div>
+    <div class="nav-label">القائمة الرئيسية</div>
+    <div class="nav-item" data-page="dashboard"><i class="ti ti-layout-dashboard"></i> لوحة التحكم</div>
+    <div class="nav-item" data-page="appointments"><i class="ti ti-calendar-event"></i> المواعيد</div>
+    <div class="nav-item" data-page="patients"><i class="ti ti-users"></i> المرضى</div>
+    <div class="nav-item" data-page="invoices"><i class="ti ti-file-invoice"></i> الفواتير</div>
+    <div class="nav-label">الإدارة</div>
+    <div class="nav-item" data-page="reports"><i class="ti ti-chart-bar"></i> التقارير</div>
+    <div class="nav-item" data-page="staff"><i class="ti ti-id-badge-2"></i> الأطباء والموظفون</div>
+    <div class="nav-item" data-page="settings"><i class="ti ti-settings"></i> الإعدادات</div>
+    <div class="nav-label">عام</div>
+    <a class="nav-item" href="/book.html" target="_blank"><i class="ti ti-world"></i> صفحة الحجز العامة</a>
+    <div class="nav-item" id="logout"><i class="ti ti-logout-2"></i> تسجيل الخروج</div>
+    <div class="me">
+      <div class="avatar" id="me-av">—</div>
+      <div style="line-height:1.35"><div style="font-size:13px;font-weight:600" id="me-name">—</div><div style="font-size:11px;color:var(--muted)" id="me-role">—</div></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <section class="page" id="page-dashboard"></section>
+    <section class="page" id="page-appointments"></section>
+    <section class="page" id="page-patients"></section>
+    <section class="page" id="page-patient"></section>
+    <section class="page" id="page-consult"></section>
+    <section class="page" id="page-invoices"></section>
+    <section class="page" id="page-reports"></section>
+    <section class="page" id="page-staff"></section>
+    <section class="page" id="page-settings"></section>
+  </main>
+</div>
+
+<div id="modal-root"></div>
+
+<script src="/assets/api.js"></script>
+<script src="/assets/pages.js"></script>
+<script src="/assets/forms.js"></script>
+<script src="/assets/app.js"></script>
+</body>
+</html>
