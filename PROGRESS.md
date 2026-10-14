@@ -18,7 +18,8 @@
 - [x] 5. التقارير — endpoint مخصّص (AdminReportController) + صفحة تقارير أغنى ✅
 - [x] 6. إكمال العمليات: StaffForm/ServiceForm/MedicineForm (إضافة/تعديل/حذف) + صفحة المخزون ✅
 - [x] 7. طباعة الفاتورة (printInvoice) + أزرار الطباعة ✅
-- [~] 8. deploy.sh جاهز ✅ | باقي: تشغيل/اختبار فعلي شامل + commit/push (مؤجّل للـreload عشان ما يطلب إذن)
+- [x] 8. deploy.sh ✅ + اختبار شامل للباك-إند (smoke test: كل النقاط نجحت ✅) + كل الصفحات تُخدَم 200
+      باقي فقط: git push لـGitHub (يحتاج ربط اعتماد الدفع مرة وحدة) + تسجيل PORTS (ملف مشترك بإذنك)
 
 ## ملاحظات ما بعد الـreload (أول ما ترجع التوكنز/الجلسة بوضع التجاوز)
 1. `docker exec clinic-api php artisan route:list` للتأكد من المسارات الجديدة.
