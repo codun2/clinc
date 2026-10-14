@@ -57,7 +57,7 @@ const App = {
     el.innerHTML = '<div class="empty"><span class="spin" style="border-color:var(--border);border-top-color:var(--teal)"></span></div>';
     if (['patient', 'consult'].indexOf(page) === -1) location.hash = page;
     window.scrollTo({ top: 0 });
-    try { await Pages[page](el, arg); }
+    try { await Pages[page](el, arg); enhanceSelects(el); }
     catch (ex) { el.innerHTML = `<div class="empty">تعذّر التحميل — ${esc(ex.message)}</div>`; }
   },
 
@@ -67,6 +67,42 @@ const App = {
     location.replace('/');
   },
 };
+
+// ===== قائمة منسدلة عصرية (تستبدل <select> الأصلية وتبقى مزامِنة معها) =====
+function enhanceSelects(root) {
+  (root || document).querySelectorAll('select:not([data-cs])').forEach((sel) => {
+    sel.dataset.cs = '1';
+    sel.style.display = 'none';
+    const wrap = document.createElement('div'); wrap.className = 'cs';
+    const trig = document.createElement('div'); trig.className = 'cs-trigger'; trig.tabIndex = 0;
+    const menu = document.createElement('div'); menu.className = 'cs-menu hidden';
+    wrap.appendChild(trig); wrap.appendChild(menu);
+    sel.parentNode.insertBefore(wrap, sel.nextSibling);
+
+    const paint = () => {
+      const o = sel.options[sel.selectedIndex];
+      const ph = !o || o.value === '';
+      trig.innerHTML = `<span class="${ph ? 'cs-ph' : ''}">${esc(o ? o.textContent : '')}</span><i class="ti ti-chevron-down"></i>`;
+    };
+    const build = () => {
+      menu.innerHTML = Array.from(sel.options).map((o, i) =>
+        `<div class="cs-opt ${i === sel.selectedIndex ? 'sel' : ''}" data-i="${i}">${esc(o.textContent)}${i === sel.selectedIndex ? '<i class="ti ti-check"></i>' : ''}</div>`).join('');
+      menu.querySelectorAll('.cs-opt').forEach((el) => el.onmousedown = (e) => {
+        e.preventDefault();
+        sel.selectedIndex = +el.dataset.i;
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+        close(); paint();
+      });
+    };
+    const outside = (e) => { if (!wrap.contains(e.target)) close(); };
+    const open = () => { build(); menu.classList.remove('hidden'); wrap.classList.add('open'); document.addEventListener('mousedown', outside); };
+    const close = () => { menu.classList.add('hidden'); wrap.classList.remove('open'); document.removeEventListener('mousedown', outside); };
+    trig.onclick = () => wrap.classList.contains('open') ? close() : open();
+    trig.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); trig.click(); } };
+    sel.addEventListener('change', paint); // يتزامن حين يغيّر الكود القيمة برمجياً
+    paint();
+  });
+}
 
 // ===== مودال عام =====
 function openModal({ title, body, footer, onOpen, width }) {
@@ -80,6 +116,7 @@ function openModal({ title, body, footer, onOpen, width }) {
   root.querySelector('#modal-x').onclick = close;
   root.querySelector('.overlay').onclick = (e) => { if (e.target.classList.contains('overlay')) close(); };
   onOpen?.(root, close);
+  enhanceSelects(root);
   return close;
 }
 

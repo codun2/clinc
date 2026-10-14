@@ -153,6 +153,20 @@ tr.row:hover td{background:#fafbfc;cursor:pointer}
 .toast{background:#0f172a;color:#fff;border-radius:10px;padding:11px 15px;font-size:13px;box-shadow:0 8px 24px rgba(15,23,42,.3);animation:fade .2s}
 .toast.err{background:var(--danger)}
 .toast.warn{background:#b45309}
+/* ===== custom select (بديل عصري للقائمة المنسدلة الأصلية) ===== */
+.cs{position:relative;font-family:inherit}
+.cs-trigger{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:13.5px;background:var(--surface);cursor:pointer;color:var(--text);transition:border-color .15s,box-shadow .15s}
+.cs-trigger:hover{border-color:var(--border-2)}
+.cs.open .cs-trigger{border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-50)}
+.cs-trigger .cs-ph{color:var(--faint)}
+.cs-trigger i{color:var(--muted);font-size:16px;transition:transform .18s}
+.cs.open .cs-trigger i{transform:rotate(180deg)}
+.cs-menu{position:absolute;top:calc(100% + 5px);right:0;left:0;background:var(--surface);border:1px solid var(--border);border-radius:11px;box-shadow:0 12px 32px rgba(15,23,42,.16);z-index:60;padding:5px;max-height:240px;overflow:auto;animation:csin .14s ease}
+@keyframes csin{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.cs-opt{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 11px;border-radius:8px;font-size:13.5px;cursor:pointer;color:var(--text)}
+.cs-opt:hover{background:var(--bg)}
+.cs-opt.sel{background:var(--teal-50);color:var(--teal-dark);font-weight:600}
+.cs-opt .ti-check{color:var(--teal);font-size:16px}
 .sugg{position:relative}
 .sugg-list{position:absolute;top:100%;right:0;left:0;background:var(--surface);border:1px solid var(--border);border-radius:9px;box-shadow:var(--shadow);z-index:20;max-height:200px;overflow:auto}
 .sugg-item{padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border)}
