@@ -54,20 +54,33 @@
         </div>
       </div>
       <button class="btn btn-primary" id="new-clinic"><i class="ti ti-plus"></i> عيادة جديدة</button>
+      <button class="btn btn-primary hidden" id="new-plan"><i class="ti ti-plus"></i> باقة جديدة</button>
       <button class="btn btn-ghost" id="logout" title="تسجيل الخروج"><i class="ti ti-logout-2"></i></button>
     </div>
   </div></div>
 
   <div class="sup-wrap">
-    <div class="topbar" style="margin-bottom:16px"><div><h1>العيادات</h1><div class="sub" id="sub-count">—</div></div></div>
-    <div class="kpis" id="kpis"></div>
-    <div class="chips" style="margin:16px 0">
-      <span class="chip on" data-s="">الكل</span>
-      <span class="chip" data-s="pending">بانتظار الاعتماد</span>
-      <span class="chip" data-s="active">نشطة</span>
-      <span class="chip" data-s="suspended">موقوفة</span>
+    <div class="chips" style="margin-bottom:16px">
+      <span class="chip on" data-tab="clinics"><i class="ti ti-building"></i> العيادات</span>
+      <span class="chip" data-tab="plans"><i class="ti ti-package"></i> الباقات</span>
     </div>
-    <div class="card" id="list"><div class="empty"><span class="spin" style="border-color:var(--border);border-top-color:var(--teal)"></span></div></div>
+
+    <div id="view-clinics">
+      <div class="topbar" style="margin-bottom:16px"><div><h1>العيادات</h1><div class="sub" id="sub-count">—</div></div></div>
+      <div class="kpis" id="kpis"></div>
+      <div class="chips" style="margin:16px 0">
+        <span class="chip on" data-s="">الكل</span>
+        <span class="chip" data-s="pending">بانتظار الاعتماد</span>
+        <span class="chip" data-s="active">نشطة</span>
+        <span class="chip" data-s="suspended">موقوفة</span>
+      </div>
+      <div class="card" id="list"><div class="empty"><span class="spin" style="border-color:var(--border);border-top-color:var(--teal)"></span></div></div>
+    </div>
+
+    <div id="view-plans" class="hidden">
+      <div class="topbar" style="margin-bottom:16px"><div><h1>الباقات</h1><div class="sub">حدّد الأطباء والمستخدمين والميزات والسعر لكل باقة</div></div></div>
+      <div id="plans-list"><div class="empty"><span class="spin" style="border-color:var(--border);border-top-color:var(--teal)"></span></div></div>
+    </div>
   </div>
 </div>
 

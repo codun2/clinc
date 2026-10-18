@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\EnforcesPlanLimits;
 use App\Http\Controllers\Controller;
 use App\Models\Clinic;
 use App\Models\User;
@@ -12,6 +13,8 @@ use Illuminate\Validation\Rules\Password;
 
 class AdminStaffController extends Controller
 {
+    use EnforcesPlanLimits;
+
     /**
      * All clinic staff / admins.
      */
@@ -118,6 +121,8 @@ class AdminStaffController extends Controller
             'permissions.*' => [Rule::in(User::PERMISSIONS)],
             'password' => ['required', Password::min(6)],
         ]);
+
+        $this->enforcePlanLimits($request->user()->clinic, ! empty($data['title']));
 
         $staff = User::create([
             'name'     => $data['name'],

@@ -65,12 +65,24 @@ class AdminAuthController extends Controller
         $s = Setting::whereIn('key', ['clinic_name', 'clinic_photo', 'primary_color'])
             ->pluck('value', 'key');
 
+        $plan = $clinic?->plan;
+
         return response()->json([
             'user'   => $user,
             'clinic' => [
                 'name'          => $s['clinic_name'] ?? ($clinic->name ?? 'Clinic'),
                 'logo'          => $s['clinic_photo'] ?? null,
                 'primary_color' => $s['primary_color'] ?? null,
+                'plan'          => $plan ? [
+                    'name'         => $plan->name,
+                    'slug'         => $plan->slug,
+                    'max_doctors'  => $plan->max_doctors,
+                    'max_users'    => $plan->max_users,
+                    'doctors_used' => $clinic->doctorsCount(),
+                    'users_used'   => $clinic->usersCount(),
+                ] : null,
+                // الميزات المفعّلة (بلا باقة = كلها — توافق خلفي)
+                'features'      => $plan ? ($plan->features ?? []) : \App\Models\Plan::FEATURES,
             ],
         ]);
     }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\EnforcesPlanLimits;
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use App\Models\User;
@@ -12,6 +13,8 @@ use Illuminate\Validation\Rule;
 
 class AdminEmployeeController extends Controller
 {
+    use EnforcesPlanLimits;
+
     /** قائمة الموظفين مع بحث وفلاتر (حالة/قسم) وإحصاءات موجزة. */
     public function index(Request $request): JsonResponse
     {
@@ -54,6 +57,11 @@ class AdminEmployeeController extends Controller
     {
         $data = $this->validated($request);
         $account = $this->validateAccount($request);
+
+        // فرض حدود الباقة قبل إنشاء حساب دخول جديد
+        if ($request->boolean('create_account')) {
+            $this->enforcePlanLimits($request->user()->clinic, ! empty($data['job_title']));
+        }
 
         $employee = DB::transaction(function () use ($data, $account, $request) {
             $data['employee_number'] = ($data['employee_number'] ?? null) ?: Employee::nextNumber();

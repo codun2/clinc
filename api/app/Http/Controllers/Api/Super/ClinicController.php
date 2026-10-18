@@ -21,8 +21,10 @@ class ClinicController extends Controller
     {
         $clinics = Clinic::query()
             ->when($request->query('status'), fn ($q, $s) => $q->where('status', $s))
+            ->with('plan:id,name,slug,max_doctors,max_users')
             ->withCount([
                 'users as staff_count' => fn ($q) => $q->whereIn('role', ['admin', 'staff']),
+                'users as doctors_count' => fn ($q) => $q->whereIn('role', ['admin', 'staff'])->whereNotNull('title'),
                 'patients as patients_count',
             ])
             ->orderByDesc('id')
@@ -43,15 +45,17 @@ class ClinicController extends Controller
             'admin_phone'   => ['nullable', 'string', 'max:30'],
             'admin_password'=> ['required', Password::min(6)],
             'status'        => ['nullable', 'in:pending,active,suspended'],
+            'plan_id'       => ['nullable', 'exists:plans,id'],
         ]);
 
         $clinic = DB::transaction(function () use ($data) {
             $clinic = Clinic::create([
-                'name'   => $data['name'],
-                'slug'   => $this->uniqueSlug($data['name']),
-                'status' => $data['status'] ?? 'active',
-                'phone'  => $data['admin_phone'] ?? null,
-                'email'  => $data['admin_email'],
+                'name'    => $data['name'],
+                'slug'    => $this->uniqueSlug($data['name']),
+                'status'  => $data['status'] ?? 'active',
+                'plan_id' => $data['plan_id'] ?? null,
+                'phone'   => $data['admin_phone'] ?? null,
+                'email'   => $data['admin_email'],
             ]);
 
             User::create([
@@ -76,12 +80,12 @@ class ClinicController extends Controller
             'phone'   => ['sometimes', 'nullable', 'string', 'max:30'],
             'email'   => ['sometimes', 'nullable', 'email', 'max:150'],
             'address' => ['sometimes', 'nullable', 'string', 'max:200'],
-            'plan'    => ['sometimes', 'nullable', 'string', 'max:60'],
+            'plan_id' => ['sometimes', 'nullable', 'exists:plans,id'],
         ]);
 
         $clinic->update($data);
 
-        return response()->json(['clinic' => $clinic]);
+        return response()->json(['clinic' => $clinic->load('plan:id,name,slug,max_doctors,max_users')]);
     }
 
     public function approve(Clinic $clinic): JsonResponse

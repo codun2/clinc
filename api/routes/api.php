@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\AdminStaffController;
 use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\ClinicRegistrationController;
 use App\Http\Controllers\Api\Super\ClinicController;
+use App\Http\Controllers\Api\Super\PlanController as SuperPlanController;
 use App\Http\Controllers\Api\Super\NotificationController as SuperNotificationController;
 use App\Http\Controllers\Api\SuperAuthController;
 use Illuminate\Support\Facades\Route;
@@ -143,5 +144,11 @@ Route::prefix('super')->group(function () {
         Route::post('clinics/{clinic}/approve', [ClinicController::class, 'approve']);
         Route::post('clinics/{clinic}/suspend', [ClinicController::class, 'suspend']);
         Route::post('clinics/{clinic}/activate', [ClinicController::class, 'activate']);
+
+        // الباقات (plans) — يديرها صاحب المنصّة
+        Route::get('plans', [SuperPlanController::class, 'index']);
+        Route::post('plans', [SuperPlanController::class, 'store']);
+        Route::patch('plans/{plan}', [SuperPlanController::class, 'update']);
+        Route::delete('plans/{plan}', [SuperPlanController::class, 'destroy']);
     });
 });

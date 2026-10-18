@@ -50,6 +50,11 @@ const App = {
     const can = (k) => u.role === 'admin' || (u.permissions || []).includes(k);
     const show = { appointments: can('appointments'), patients: can('patients'), invoices: can('invoices'),
       inventory: can('inventory'), reports: can('invoices'), staff: can('staff'), settings: can('settings') };
+    // بوابات الباقة: أخفِ الوحدات التي لا تتيحها باقة العيادة (بلا باقة = كلها متاحة)
+    const feats = App.clinic?.features;
+    const hasFeat = (f) => !feats || feats.includes(f);
+    if (!hasFeat('inventory')) show.inventory = false;
+    if (!hasFeat('reports')) show.reports = false;
     document.querySelectorAll('.nav-item[data-page]').forEach((n) => {
       const p = n.dataset.page;
       if (p !== 'dashboard' && show[p] === false) n.classList.add('hidden');

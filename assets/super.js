@@ -80,14 +80,26 @@ const Sup = {
 
     document.getElementById('logout').onclick = Sup.logout;
     document.getElementById('new-clinic').onclick = () => ClinicForm();
+    document.getElementById('new-plan').onclick = () => PlanForm();
     document.querySelectorAll('.chip[data-s]').forEach((c) => c.onclick = () => {
-      document.querySelectorAll('.chip').forEach((x) => x.classList.remove('on'));
+      document.querySelectorAll('.chip[data-s]').forEach((x) => x.classList.remove('on'));
       c.classList.add('on'); Sup.filter = c.dataset.s; Sup.load();
     });
+    document.querySelectorAll('.chip[data-tab]').forEach((c) => c.onclick = () => Sup.tab(c.dataset.tab));
 
     Sup.setupNotifications();
     I18N.apply(document.body);
     Sup.load();
+  },
+
+  // تبديل التبويبات: العيادات / الباقات
+  tab(name) {
+    document.querySelectorAll('.chip[data-tab]').forEach((x) => x.classList.toggle('on', x.dataset.tab === name));
+    document.getElementById('view-clinics').classList.toggle('hidden', name !== 'clinics');
+    document.getElementById('view-plans').classList.toggle('hidden', name !== 'plans');
+    document.getElementById('new-clinic').classList.toggle('hidden', name !== 'clinics');
+    document.getElementById('new-plan').classList.toggle('hidden', name !== 'plans');
+    if (name === 'plans') Sup.loadPlans();
   },
 
   async load() {
@@ -108,9 +120,9 @@ const Sup = {
         return `<tr data-id="${c.id}">
           <td><div class="cell-p"><div class="avatar">${esc(initials(c.name))}</div><div>${esc(c.name)}<small>${esc(c.email || '—')}</small></div></div></td>
           <td style="direction:ltr;text-align:right"><a href="/book.html?c=${esc(c.slug)}" target="_blank" style="color:var(--teal)">/${esc(c.slug)}</a></td>
-          <td>${c.staff_count ?? 0}</td>
+          <td>${c.staff_count ?? 0}${c.plan?.max_users ? ` <small style="color:var(--faint)">/ ${c.plan.max_users}</small>` : ''}</td>
           <td>${c.patients_count ?? 0}</td>
-          <td>${esc(c.plan || '—')}</td>
+          <td>${c.plan ? `<span class="badge b-teal">${esc(c.plan.name)}</span>` : '<span class="badge b-mut">بلا باقة</span>'}</td>
           <td><span class="badge ${st.cls}">${st.label}</span></td>
           <td style="color:var(--faint)">${dateOf(c.created_at)}</td>
           <td style="white-space:nowrap">${Sup.actions(c)}</td>
@@ -196,10 +208,105 @@ const Sup = {
 
 function showLogin() { Sup.showLogin(); }
 
+// ===== الباقات =====
+const FEATURE_LABELS = {
+  online_booking: 'حجز أونلاين', sms_reminders: 'تذكير SMS', inventory: 'المخزون',
+  reports: 'التقارير', patient_portal: 'بوابة المريض', multi_branch: 'فروع متعددة',
+};
+let PLAN_FEATURES = Object.keys(FEATURE_LABELS);
+
+Sup.loadPlans = async function () {
+  const el = document.getElementById('plans-list');
+  el.innerHTML = '<div class="empty"><span class="spin" style="border-color:var(--border);border-top-color:var(--teal)"></span></div>';
+  let d;
+  try { d = await SAPI.get('/super/plans'); } catch (ex) { el.innerHTML = `<div class="empty">تعذّر التحميل — ${esc(ex.message)}</div>`; return; }
+  if (Array.isArray(d.features)) PLAN_FEATURES = d.features;
+  const plans = d.plans || [];
+  const lim = (n) => n == null ? 'غير محدود' : n;
+  el.innerHTML = `<div class="grid3">${plans.map((p) => `
+    <div class="card pad" style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <b style="font-size:16px">${esc(p.name)}</b>
+        <span class="badge ${p.is_active ? 'b-ok' : 'b-mut'}">${p.is_active ? 'مفعّلة' : 'موقوفة'}</span>
+      </div>
+      <div style="font-size:24px;font-weight:700;color:var(--teal-dark)">${money(p.price_monthly)} <span style="font-size:12px;color:var(--muted);font-weight:400">ريال / شهرياً</span></div>
+      <div style="display:flex;gap:8px">
+        <div style="flex:1;background:var(--bg);border-radius:9px;padding:8px;text-align:center"><div style="font-size:11px;color:var(--muted)">الأطباء</div><b>${lim(p.max_doctors)}</b></div>
+        <div style="flex:1;background:var(--bg);border-radius:9px;padding:8px;text-align:center"><div style="font-size:11px;color:var(--muted)">المستخدمون</div><b>${lim(p.max_users)}</b></div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">${(p.features || []).map((f) => `<span class="badge b-teal" style="font-size:10.5px">${esc(FEATURE_LABELS[f] || f)}</span>`).join('') || '<span style="font-size:12px;color:var(--faint)">الميزات الأساسية فقط</span>'}</div>
+      <div style="font-size:11.5px;color:var(--muted);border-top:1px dashed var(--border);padding-top:8px">${p.clinics_count ?? 0} عيادة على هذه الباقة · تجربة ${p.trial_days} يوم</div>
+      <div style="display:flex;gap:7px">
+        <button class="btn btn-ghost btn-sm" data-edit-plan="${p.id}"><i class="ti ti-edit"></i> تعديل</button>
+        <button class="btn btn-ghost btn-sm" data-del-plan="${p.id}" ${p.clinics_count ? 'disabled title="مرتبطة بعيادات"' : ''}><i class="ti ti-trash"></i></button>
+      </div>
+    </div>`).join('')}</div>`;
+  el.querySelectorAll('[data-edit-plan]').forEach((b) => b.onclick = () => PlanForm(plans.find((x) => x.id == b.dataset.editPlan)));
+  el.querySelectorAll('[data-del-plan]').forEach((b) => b.onclick = async () => {
+    if (!confirm('حذف هذه الباقة؟')) return;
+    try { await SAPI.call('/super/plans/' + b.dataset.delPlan, { method: 'DELETE' }); toast('تم حذف الباقة'); Sup.loadPlans(); }
+    catch (ex) { toast(ex.message, 'err'); }
+  });
+  I18N.apply(el);
+};
+
+function PlanForm(p = null) {
+  const edit = !!p;
+  const v = (k, d = '') => p?.[k] ?? d;
+  const feats = new Set(p?.features || []);
+  openModal({
+    title: edit ? 'تعديل الباقة' : 'باقة جديدة',
+    width: 520,
+    body: `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
+        <div class="field"><label>اسم الباقة *</label><input id="p-name" value="${esc(v('name'))}" placeholder="فردية / عيادة …"></div>
+        <div class="field"><label>المعرّف (slug) *</label><input id="p-slug" value="${esc(v('slug'))}" placeholder="solo" style="direction:ltr" ${edit ? 'readonly' : ''}></div>
+        <div class="field"><label>حد الأطباء</label><input id="p-docs" type="number" value="${v('max_doctors', '')}" placeholder="فارغ = غير محدود"></div>
+        <div class="field"><label>حد المستخدمين</label><input id="p-users" type="number" value="${v('max_users', '')}" placeholder="فارغ = غير محدود"></div>
+        <div class="field"><label>السعر الشهري (ريال)</label><input id="p-price" type="number" value="${v('price_monthly', 0)}"></div>
+        <div class="field"><label>أيام التجربة</label><input id="p-trial" type="number" value="${v('trial_days', 0)}"></div>
+      </div>
+      <div class="field"><label>الميزات المفعّلة</label>
+        <div id="p-feats" style="display:flex;flex-wrap:wrap;gap:7px">${PLAN_FEATURES.map((f) => `<label class="chip ${feats.has(f) ? 'on' : ''}" style="cursor:pointer;display:flex;gap:5px;align-items:center"><input type="checkbox" value="${f}" ${feats.has(f) ? 'checked' : ''} style="width:auto"> ${esc(FEATURE_LABELS[f] || f)}</label>`).join('')}</div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:0"><input type="checkbox" id="p-active" ${p?.is_active !== false ? 'checked' : ''} style="width:auto"> الباقة مفعّلة (متاحة للعيادات الجديدة)</label>`,
+    footer: `<button class="btn btn-primary" id="p-save">${edit ? 'حفظ' : 'إنشاء الباقة'}</button><button class="btn btn-ghost" id="p-cancel">إلغاء</button>`,
+    onOpen: (root, close) => {
+      root.querySelectorAll('#p-feats label input').forEach((c) => c.onchange = () => c.closest('label').classList.toggle('on', c.checked));
+      root.querySelector('#p-cancel').onclick = close;
+      root.querySelector('#p-save').onclick = async (e) => {
+        const num = (id) => { const x = root.querySelector(id).value.trim(); return x === '' ? null : Number(x); };
+        const body = {
+          name: root.querySelector('#p-name').value.trim(),
+          slug: root.querySelector('#p-slug').value.trim(),
+          max_doctors: num('#p-docs'), max_users: num('#p-users'),
+          price_monthly: num('#p-price') ?? 0, trial_days: num('#p-trial') ?? 0,
+          is_active: root.querySelector('#p-active').checked,
+          features: [...root.querySelectorAll('#p-feats input:checked')].map((c) => c.value),
+        };
+        if (!body.name || !body.slug) { toast('الاسم والمعرّف مطلوبان', 'err'); return; }
+        e.target.disabled = true;
+        try {
+          if (edit) await SAPI.patch('/super/plans/' + p.id, body);
+          else await SAPI.post('/super/plans', body);
+          close(); toast(edit ? 'تم حفظ الباقة' : 'تم إنشاء الباقة'); Sup.loadPlans();
+        } catch (ex) { toast(ex.message, 'err'); e.target.disabled = false; }
+      };
+    },
+  });
+}
+
 // ===== نموذج إنشاء/تعديل عيادة =====
-function ClinicForm(c = null) {
+async function ClinicForm(c = null) {
   const edit = !!c;
   const v = (k) => esc(c?.[k] || '');
+  // جلب الباقات المفعّلة لقائمة الاختيار
+  let plans = [];
+  try { plans = (await SAPI.get('/super/plans')).plans.filter((p) => p.is_active); } catch {}
+  const curPlan = c?.plan?.id;
+  const planOpts = `<option value="">— بلا باقة —</option>` + plans.map((p) =>
+    `<option value="${p.id}" ${p.id == curPlan ? 'selected' : ''}>${esc(p.name)} · ${p.max_doctors ?? '∞'} طبيب / ${p.max_users ?? '∞'} مستخدم · ${money(p.price_monthly)} ريال</option>`).join('');
+
   openModal({
     title: edit ? 'تعديل العيادة' : 'عيادة جديدة',
     width: 520,
@@ -210,7 +317,7 @@ function ClinicForm(c = null) {
         <div class="field"><label>البريد</label><input id="c-email" value="${v('email')}"></div>
       </div>
       <div class="field"><label>العنوان</label><input id="c-address" value="${v('address')}"></div>
-      <div class="field" style="margin:0"><label>الاشتراك / الباقة</label><input id="c-plan" value="${v('plan')}" placeholder="مثال: أساسي / احترافي"></div>
+      <div class="field" style="margin:0"><label>الباقة</label><select id="c-plan">${planOpts}</select></div>
     ` : `
       <div class="field"><label>اسم العيادة *</label><input id="c-name" placeholder="عيادة ..."></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
@@ -219,8 +326,11 @@ function ClinicForm(c = null) {
         <div class="field"><label>بريد المدير *</label><input id="c-email" type="email"></div>
         <div class="field"><label>كلمة المرور *</label><input id="c-pass" type="text" placeholder="6 أحرف على الأقل"></div>
       </div>
-      <div class="field" style="margin:0"><label>الحالة</label>
-        <select id="c-status"><option value="active">نشطة (فعّالة فوراً)</option><option value="pending">بانتظار الاعتماد</option></select>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
+        <div class="field" style="margin:0"><label>الباقة *</label><select id="c-plan">${planOpts}</select></div>
+        <div class="field" style="margin:0"><label>الحالة</label>
+          <select id="c-status"><option value="active">نشطة (فعّالة فوراً)</option><option value="pending">بانتظار الاعتماد</option></select>
+        </div>
       </div>`,
     footer: `<button class="btn btn-primary" id="c-save">${edit ? 'حفظ' : 'إنشاء العيادة'}</button><button class="btn btn-ghost" id="c-cancel">إلغاء</button>`,
     onOpen: (root, close) => {
@@ -232,7 +342,7 @@ function ClinicForm(c = null) {
             await SAPI.patch('/super/clinics/' + c.id, {
               name: root.querySelector('#c-name').value, phone: root.querySelector('#c-phone').value || null,
               email: root.querySelector('#c-email').value || null, address: root.querySelector('#c-address').value || null,
-              plan: root.querySelector('#c-plan').value || null,
+              plan_id: root.querySelector('#c-plan').value || null,
             });
             toast('تم حفظ العيادة');
           } else {
@@ -240,6 +350,7 @@ function ClinicForm(c = null) {
               name: root.querySelector('#c-name').value, admin_name: root.querySelector('#c-admin').value,
               admin_email: root.querySelector('#c-email').value, admin_phone: root.querySelector('#c-phone').value || null,
               admin_password: root.querySelector('#c-pass').value, status: root.querySelector('#c-status').value,
+              plan_id: root.querySelector('#c-plan').value || null,
             });
             toast('تم إنشاء العيادة');
           }
