@@ -123,11 +123,13 @@ Pages.appointments = async (el, date) => {
     const r = await API.get('/admin/appointments?date=' + date + (docId ? '&doctor_id=' + docId : ''));
     el.querySelector('#sched').innerHTML = r.appointments.length ? r.appointments.map((a) => {
       const s = APPT_STATUS[a.status] || APPT_STATUS.scheduled;
-      return `<div class="appt ${a.status === 'scheduled' || a.status === 'confirmed' ? 'a-gray' : 'a-teal'}" data-pid="${a.patient.id}"><div><b>${timeOf(a.scheduled_at)} · ${esc(a.patient.name)}</b> <small>${esc(a.department || '')}</small></div><span class="badge ${s.cls}">${s.label}</span></div>`;
+      return `<div class="appt ${a.status === 'scheduled' || a.status === 'confirmed' ? 'a-gray' : 'a-teal'}" data-id="${a.id}" data-pid="${a.patient.id}" data-status="${a.status}"><div><b>${timeOf(a.scheduled_at)} · ${esc(a.patient.name)}</b> <small>${esc(a.department || '')}</small></div><span class="badge ${s.cls}">${s.label}</span></div>`;
     }).join('') : '<div class="empty">لا مواعيد</div>';
-    el.querySelectorAll('#sched .appt').forEach((a) => a.onclick = () => a.dataset.pid && App.go('patient', a.dataset.pid));
+    bindApptClicks();
   });
-  el.querySelectorAll('#sched .appt').forEach((a) => a.onclick = () => App.go('patient', a.dataset.pid));
+  const bindApptClicks = () => el.querySelectorAll('#sched .appt').forEach((a) =>
+    a.onclick = () => AppointmentActions({ id: a.dataset.id, status: a.dataset.status, pid: a.dataset.pid }, () => App.go('appointments', date)));
+  bindApptClicks();
   el.querySelectorAll('[data-consult]').forEach((b) => b.onclick = () => startConsultation({ appointment_id: b.dataset.consult }));
 };
 

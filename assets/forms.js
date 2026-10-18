@@ -295,6 +295,47 @@ async function InvoiceForm() {
   });
 }
 
+// ===== إجراءات الموعد (تأكيد/وصول/كشف/لم يحضر/إلغاء) =====
+function AppointmentActions(appt, done) {
+  const setStatus = async (status) => {
+    try { await API.patch('/admin/appointments/' + appt.id + '/status', { status }); toast('تم تحديث الموعد'); close(); done?.(); App.loadBadges(); }
+    catch (ex) { toast(ex.message, 'err'); }
+  };
+  // الأزرار المتاحة حسب الحالة الحالية
+  const btns = [];
+  if (appt.status === 'scheduled') {
+    btns.push(['confirmed', 'تأكيد الموعد', 'ti-circle-check', 'btn-primary']);
+    btns.push(['arrived', 'تسجيل وصول', 'ti-user-check', 'btn-ghost']);
+  } else if (appt.status === 'confirmed') {
+    btns.push(['arrived', 'تسجيل وصول', 'ti-user-check', 'btn-primary']);
+  }
+  if (['scheduled', 'confirmed', 'arrived'].includes(appt.status)) {
+    btns.push([null, 'بدء الكشف', 'ti-stethoscope', 'btn-soft', () => { close(); startConsultation({ appointment_id: appt.id }); }]);
+  }
+  btns.push([null, 'فتح ملف المريض', 'ti-folder', 'btn-ghost', () => { close(); App.go('patient', appt.pid); }]);
+  if (appt.status !== 'completed' && appt.status !== 'cancelled') {
+    btns.push(['no_show', 'لم يحضر', 'ti-calendar-x', 'btn-ghost']);
+    btns.push(['cancelled', 'إلغاء الموعد', 'ti-x', 'btn-danger']);
+  }
+
+  const close = openModal({
+    title: 'إجراءات الموعد',
+    body: `<div style="font-size:12.5px;color:var(--muted);margin-bottom:12px">الحالة الحالية: <b style="color:var(--text)">${(APPT_STATUS[appt.status] || {}).label || appt.status}</b></div>
+      <div id="appt-actions" style="display:flex;flex-direction:column;gap:8px"></div>`,
+    width: 360,
+    onOpen: (root) => {
+      const box = root.querySelector('#appt-actions');
+      btns.forEach(([status, label, icon, cls, fn], i) => {
+        const b = document.createElement('button');
+        b.className = 'btn ' + cls; b.style.justifyContent = 'flex-start';
+        b.innerHTML = `<i class="ti ${icon}"></i> ${label}`;
+        b.onclick = fn || (() => setStatus(status));
+        box.appendChild(b);
+      });
+    },
+  });
+}
+
 // ===== تحصيل فاتورة معلّقة =====
 function PayInvoice(id, done) {
   openModal({

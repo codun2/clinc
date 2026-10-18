@@ -12,6 +12,7 @@ use App\Support\Notify;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * الحجز الأونلاين العام — بدون تسجيل دخول.
@@ -53,11 +54,13 @@ class AppointmentController extends Controller
             'doctor_id' => ['nullable', 'integer'],
         ]);
 
+        // الوقت لا يُشطب إلا بعد أن يؤكّد الطبيب الموعد؛ الطلبات المعلّقة
+        // (scheduled) تبقى الأوقات متاحة لغيرها حتى التأكيد.
         $taken = Appointment::withoutGlobalScopes()
             ->where('clinic_id', $clinic->id)
             ->whereDate('scheduled_at', $data['date'])
             ->when($data['doctor_id'] ?? null, fn ($q, $d) => $q->where('doctor_id', $d))
-            ->whereNotIn('status', ['cancelled', 'no_show'])
+            ->whereIn('status', ['confirmed', 'arrived', 'in_progress', 'completed'])
             ->pluck('scheduled_at')
             ->map(fn ($dt) => $dt->format('H:i'));
 
@@ -84,6 +87,22 @@ class AppointmentController extends Controller
             'doctor_id'    => ['nullable', 'integer'],
             'scheduled_at' => ['required', 'date', 'after:now'],
         ]);
+
+        // لا نمنع الطلبات المعلّقة على نفس الوقت (الطلب لا يحجز)، لكن نمنع
+        // الحجز على وقت سبق أن أكّده الطبيب لنفس الطبيب.
+        if (! empty($data['doctor_id'])) {
+            $confirmed = Appointment::withoutGlobalScopes()
+                ->where('clinic_id', $clinic->id)
+                ->where('doctor_id', $data['doctor_id'])
+                ->where('scheduled_at', $data['scheduled_at'])
+                ->whereIn('status', ['confirmed', 'arrived', 'in_progress', 'completed'])
+                ->exists();
+            if ($confirmed) {
+                throw ValidationException::withMessages([
+                    'scheduled_at' => ['هذا الوقت حُجز للتوّ — اختر وقتاً آخر.'],
+                ]);
+            }
+        }
 
         $appointment = DB::transaction(function () use ($clinic, $data) {
             $patient = Patient::withoutGlobalScopes()
@@ -125,7 +144,7 @@ class AppointmentController extends Controller
         );
 
         return response()->json([
-            'message'     => 'تم الحجز — سيصلك تأكيد برسالة نصية.',
+            'message'     => 'تم استلام طلب الحجز — بانتظار تأكيد العيادة، وسيصلك إشعار بالتأكيد.',
             'appointment' => $appointment,
         ], 201);
     }
