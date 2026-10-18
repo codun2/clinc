@@ -397,35 +397,69 @@ function AppointmentActions(appt, done) {
     try { await API.patch('/admin/appointments/' + appt.id + '/status', { status }); toast('تم تحديث الموعد'); close(); done?.(); App.loadBadges(); }
     catch (ex) { toast(ex.message, 'err'); }
   };
-  // الأزرار المتاحة حسب الحالة الحالية
-  const btns = [];
+  // نغمات الألوان لكل إجراء (دائرة أيقونة + حافة)
+  const TONE = {
+    teal:   { ic: 'var(--teal)',   bg: 'rgba(14,138,138,.12)' },
+    ok:     { ic: 'var(--ok)',     bg: 'var(--ok-bg)' },
+    info:   { ic: 'var(--info)',   bg: 'var(--info-bg)' },
+    warn:   { ic: 'var(--warn)',   bg: 'var(--warn-bg)' },
+    danger: { ic: 'var(--danger)', bg: 'var(--danger-bg)' },
+    neutral:{ ic: 'var(--muted)',  bg: 'var(--bg)' },
+  };
+
+  // الإجراءات المتاحة حسب الحالة — كل إجراء: {act|fn, title, desc, icon, tone, primary}
+  const acts = [];
   if (appt.status === 'scheduled') {
-    btns.push(['confirmed', 'تأكيد الموعد', 'ti-circle-check', 'btn-primary']);
-    btns.push(['arrived', 'تسجيل وصول', 'ti-user-check', 'btn-ghost']);
+    acts.push({ act: 'confirmed', title: 'تأكيد الموعد', desc: 'يُثبّت الحجز ويحجز الوقت', icon: 'ti-circle-check', tone: 'teal', primary: true });
+    acts.push({ act: 'arrived', title: 'تسجيل وصول', desc: 'المريض حضر الآن → قائمة الانتظار', icon: 'ti-user-check', tone: 'info' });
   } else if (appt.status === 'confirmed') {
-    btns.push(['arrived', 'تسجيل وصول', 'ti-user-check', 'btn-primary']);
+    acts.push({ act: 'arrived', title: 'تسجيل وصول', desc: 'المريض حضر الآن → قائمة الانتظار', icon: 'ti-user-check', tone: 'info', primary: true });
   }
   if (['scheduled', 'confirmed', 'arrived'].includes(appt.status)) {
-    btns.push([null, 'بدء الكشف', 'ti-stethoscope', 'btn-soft', () => { close(); startConsultation({ appointment_id: appt.id }); }]);
+    acts.push({ title: 'بدء الكشف', desc: 'يفتح شاشة الكشف مباشرة', icon: 'ti-stethoscope', tone: 'teal', primary: appt.status === 'arrived', fn: () => { close(); startConsultation({ appointment_id: appt.id }); } });
   }
-  btns.push([null, 'فتح ملف المريض', 'ti-folder', 'btn-ghost', () => { close(); App.go('patient', appt.pid); }]);
+  acts.push({ title: 'فتح ملف المريض', desc: 'السجل الكامل والتاريخ الطبي', icon: 'ti-folder', tone: 'neutral', fn: () => { close(); App.go('patient', appt.pid); } });
   if (appt.status !== 'completed' && appt.status !== 'cancelled') {
-    btns.push(['no_show', 'لم يحضر', 'ti-calendar-x', 'btn-ghost']);
-    btns.push(['cancelled', 'إلغاء الموعد', 'ti-x', 'btn-danger']);
+    acts.push({ act: 'no_show', title: 'لم يحضر', desc: 'تعليم الموعد كمتغيّب', icon: 'ti-calendar-x', tone: 'warn' });
+    acts.push({ act: 'cancelled', title: 'إلغاء الموعد', desc: 'إلغاء نهائي للموعد', icon: 'ti-x', tone: 'danger' });
   }
 
+  const st = APPT_STATUS[appt.status] || {};
   const close = openModal({
     title: 'إجراءات الموعد',
-    body: `<div style="font-size:12.5px;color:var(--muted);margin-bottom:12px">الحالة الحالية: <b style="color:var(--text)">${(APPT_STATUS[appt.status] || {}).label || appt.status}</b></div>
-      <div id="appt-actions" style="display:flex;flex-direction:column;gap:8px"></div>`,
-    width: 360,
+    body: `<style>
+      .act-row{display:flex;align-items:center;gap:12px;width:100%;text-align:start;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:11px 13px;cursor:pointer;transition:border-color .15s,background .15s,transform .05s;font-family:inherit}
+      .act-row:hover{border-color:var(--teal);background:var(--bg)}
+      .act-row:active{transform:scale(.99)}
+      .act-row .act-ic{flex-shrink:0;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-size:20px}
+      .act-row .act-tx{flex:1;min-width:0;line-height:1.4}
+      .act-row .act-tx b{font-size:14px;color:var(--text);display:block}
+      .act-row .act-tx small{font-size:11.5px;color:var(--muted)}
+      .act-row .act-go{color:var(--faint);font-size:16px;flex-shrink:0}
+      .act-row.is-primary{background:var(--teal);border-color:var(--teal)}
+      .act-row.is-primary:hover{background:var(--teal-dark)}
+      .act-row.is-primary .act-ic{background:rgba(255,255,255,.2)!important;color:#fff!important}
+      .act-row.is-primary .act-tx b{color:#fff}
+      .act-row.is-primary .act-tx small{color:rgba(255,255,255,.82)}
+      .act-row.is-primary .act-go{color:rgba(255,255,255,.7)}
+    </style>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+      <span style="font-size:12.5px;color:var(--muted)">الحالة الحالية</span>
+      <span class="badge ${st.cls || ''}">${st.label || appt.status}</span>
+    </div>
+    <div id="appt-actions" style="display:flex;flex-direction:column;gap:9px"></div>`,
+    width: 380,
     onOpen: (root) => {
       const box = root.querySelector('#appt-actions');
-      btns.forEach(([status, label, icon, cls, fn], i) => {
+      acts.forEach((a) => {
+        const t = TONE[a.tone] || TONE.neutral;
         const b = document.createElement('button');
-        b.className = 'btn ' + cls; b.style.justifyContent = 'flex-start';
-        b.innerHTML = `<i class="ti ${icon}"></i> ${label}`;
-        b.onclick = fn || (() => setStatus(status));
+        b.className = 'act-row' + (a.primary ? ' is-primary' : '');
+        b.innerHTML = `
+          <span class="act-ic" style="background:${t.bg};color:${t.ic}"><i class="ti ${a.icon}"></i></span>
+          <span class="act-tx"><b>${a.title}</b><small>${a.desc}</small></span>
+          <i class="ti ti-chevron-left act-go"></i>`;
+        b.onclick = a.fn || (() => setStatus(a.act));
         box.appendChild(b);
       });
     },
