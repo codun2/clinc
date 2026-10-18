@@ -64,7 +64,9 @@ Pages.dashboard = async (el) => {
 // ============ المواعيد ============
 Pages.appointments = async (el, date) => {
   date = date || new Date().toISOString().slice(0, 10);
-  const [d, docs] = await Promise.all([ API.get('/admin/appointments?date=' + date), API.get('/admin/doctors') ]);
+  const d = await API.get('/admin/appointments?date=' + date);
+  // الطبيب مقيّد بمواعيده → لا داعي لجلب قائمة الأطباء ولا عرض فلترهم
+  const docs = d.scoped ? { doctors: [] } : await API.get('/admin/doctors');
   const dateLabel = new Date(date).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   el.innerHTML = `
@@ -77,10 +79,10 @@ Pages.appointments = async (el, date) => {
       <button class="btn btn-primary" id="new-appt"><i class="ti ti-plus"></i> موعد جديد</button>
     </div>
   </div>
-  <div class="chips" style="margin-bottom:14px">
+  ${d.scoped ? '' : `<div class="chips" style="margin-bottom:14px">
     <span class="chip on" data-doc="">كل الأطباء</span>
     ${docs.doctors.map((x) => `<span class="chip" data-doc="${x.id}">${esc(x.name)}</span>`).join('')}
-  </div>
+  </div>`}
   <div class="grid2">
     <div class="card"><div class="card-h"><b>جدول اليوم</b></div><div class="pad" id="sched">
       ${d.appointments.length ? d.appointments.map((a) => {

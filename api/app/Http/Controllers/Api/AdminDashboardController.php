@@ -7,13 +7,19 @@ use App\Models\Appointment;
 use App\Models\Invoice;
 use App\Models\Patient;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class AdminDashboardController extends Controller
 {
     /** أرقام لوحة التحكم — كلها ليوم/أسبوع واحد ومشمولة بنطاق العيادة تلقائياً. */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $today = Appointment::whereDate('scheduled_at', today());
+        $user = $request->user();
+        // الطبيب يرى مواعيده وطابوره هو فقط؛ المدير/الاستقبال يرون كامل العيادة.
+        $onlyMine = $user->title && $user->role !== 'admin';
+        $scope = fn ($query) => $onlyMine ? $query->where('doctor_id', $user->id) : $query;
+
+        $today = $scope(Appointment::whereDate('scheduled_at', today()));
 
         $byDepartment = (clone $today)
             ->selectRaw('department, count(*) as count')
@@ -21,7 +27,7 @@ class AdminDashboardController extends Controller
             ->orderByDesc('count')
             ->pluck('count', 'department');
 
-        $queue = Appointment::where('status', 'arrived')
+        $queue = $scope(Appointment::where('status', 'arrived'))
             ->with(['patient:id,name,file_no', 'doctor:id,name'])
             ->orderBy('arrived_at')
             ->get();

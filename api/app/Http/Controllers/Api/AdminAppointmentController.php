@@ -14,11 +14,17 @@ class AdminAppointmentController extends Controller
     public function index(Request $request): JsonResponse
     {
         $date = $request->query('date', today()->toDateString());
+        $user = $request->user();
 
-        $q = Appointment::whereDate('scheduled_at', $date)
+        // الطبيب (صاحب مسمّى وظيفي، غير المدير) يرى مواعيده فقط — لا مواعيد زملائه.
+        $onlyMine = $user->title && $user->role !== 'admin';
+        $scope = fn ($query) => $onlyMine ? $query->where('doctor_id', $user->id) : $query;
+
+        $q = $scope(Appointment::whereDate('scheduled_at', $date))
             ->with(['patient:id,name,file_no,phone', 'doctor:id,name']);
 
-        if ($doctorId = $request->query('doctor_id')) {
+        // الفلتر اليدوي بالطبيب متاح فقط لغير المقيّدين (الاستقبال/المدير).
+        if (! $onlyMine && ($doctorId = $request->query('doctor_id'))) {
             $q->where('doctor_id', $doctorId);
         }
         if ($status = $request->query('status')) {
@@ -27,16 +33,17 @@ class AdminAppointmentController extends Controller
 
         $appointments = $q->orderBy('scheduled_at')->get();
 
-        $queue = Appointment::where('status', 'arrived')
+        $queue = $scope(Appointment::where('status', 'arrived'))
             ->with(['patient:id,name,file_no', 'doctor:id,name'])
             ->orderBy('arrived_at')
             ->get();
 
-        $all = Appointment::whereDate('scheduled_at', $date);
+        $all = $scope(Appointment::whereDate('scheduled_at', $date));
 
         return response()->json([
             'appointments' => $appointments,
             'queue'        => $queue,
+            'scoped'       => $onlyMine, // تُخبر الواجهة أن تخفي فلتر الأطباء
             'summary'      => [
                 'total'     => (clone $all)->count(),
                 'completed' => (clone $all)->where('status', 'completed')->count(),
