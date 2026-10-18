@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
 class ClinicController extends Controller
@@ -22,6 +23,13 @@ class ClinicController extends Controller
         $clinics = Clinic::query()
             ->when($request->query('status'), fn ($q, $s) => $q->where('status', $s))
             ->with('plan:id,name,slug,max_doctors,max_users')
+            // بريد دخول المدير الأساسي (لعرضه/تعديله من لوحة السوبر)
+            ->addSelect(['admin_email' => User::select('email')
+                ->whereColumn('users.clinic_id', 'clinics.id')
+                ->where('role', 'admin')
+                ->orderBy('id')
+                ->limit(1),
+            ])
             ->withCount([
                 'users as staff_count' => fn ($q) => $q->whereIn('role', ['admin', 'staff']),
                 'users as doctors_count' => fn ($q) => $q->whereIn('role', ['admin', 'staff'])->whereNotNull('title'),
@@ -75,17 +83,47 @@ class ClinicController extends Controller
 
     public function update(Request $request, Clinic $clinic): JsonResponse
     {
+        // المدير الأساسي للعيادة (لتعديل بريده/كلمة مروره)
+        $admin = $clinic->users()->where('role', 'admin')->orderBy('id')->first();
+
         $data = $request->validate([
             'name'    => ['sometimes', 'string', 'max:120'],
             'phone'   => ['sometimes', 'nullable', 'string', 'max:30'],
             'email'   => ['sometimes', 'nullable', 'email', 'max:150'],
             'address' => ['sometimes', 'nullable', 'string', 'max:200'],
             'plan_id' => ['sometimes', 'nullable', 'exists:plans,id'],
+            // بيانات دخول المدير (اختيارية) — لإنشاء/إعادة ضبط كلمة المرور
+            'admin_name'     => ['sometimes', 'nullable', 'string', 'max:100'],
+            'admin_email'    => ['sometimes', 'nullable', 'email', 'max:150', Rule::unique('users', 'email')->ignore($admin?->id)],
+            'admin_password' => ['sometimes', 'nullable', Password::min(6)],
         ]);
 
-        $clinic->update($data);
+        DB::transaction(function () use ($data, $clinic, $admin) {
+            $clinic->update(collect($data)->only(['name', 'phone', 'email', 'address', 'plan_id'])->all());
 
-        return response()->json(['clinic' => $clinic->load('plan:id,name,slug,max_doctors,max_users')]);
+            // إعادة ضبط / إنشاء حساب دخول المدير
+            if (! empty($data['admin_password']) || ! empty($data['admin_email'])) {
+                if ($admin) {
+                    $admin->update(array_filter([
+                        'name'     => $data['admin_name'] ?? null,
+                        'email'    => $data['admin_email'] ?? null,
+                        'password' => $data['admin_password'] ?? null,
+                    ], fn ($v) => $v !== null && $v !== ''));
+                } elseif (! empty($data['admin_email']) && ! empty($data['admin_password'])) {
+                    // عيادة بلا مدير → أنشئ واحداً
+                    User::create([
+                        'clinic_id' => $clinic->id,
+                        'name'      => $data['admin_name'] ?: $clinic->name,
+                        'email'     => $data['admin_email'],
+                        'role'      => 'admin',
+                        'status'    => 'active',
+                        'password'  => $data['admin_password'],
+                    ]);
+                }
+            }
+        });
+
+        return response()->json(['clinic' => $clinic->fresh()->load('plan:id,name,slug,max_doctors,max_users')]);
     }
 
     public function approve(Clinic $clinic): JsonResponse

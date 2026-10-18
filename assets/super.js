@@ -317,7 +317,14 @@ async function ClinicForm(c = null) {
         <div class="field"><label>البريد</label><input id="c-email" value="${v('email')}"></div>
       </div>
       <div class="field"><label>العنوان</label><input id="c-address" value="${v('address')}"></div>
-      <div class="field" style="margin:0"><label>الباقة</label><select id="c-plan">${planOpts}</select></div>
+      <div class="field"><label>الباقة</label><select id="c-plan">${planOpts}</select></div>
+      <div style="border-top:1px dashed var(--border);margin-top:4px;padding-top:12px">
+        <div style="font-size:12.5px;font-weight:700;color:var(--teal-dark);margin-bottom:8px"><i class="ti ti-key"></i> دخول مدير العيادة</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
+          <div class="field"><label>بريد الدخول</label><input id="c-admin-email" value="${v('admin_email')}" type="email" style="direction:ltr"></div>
+          <div class="field"><label>كلمة مرور جديدة</label><input id="c-admin-pass" type="text" placeholder="اتركها فارغة لعدم التغيير"></div>
+        </div>
+      </div>
     ` : `
       <div class="field"><label>اسم العيادة *</label><input id="c-name" placeholder="عيادة ..."></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
@@ -339,12 +346,17 @@ async function ClinicForm(c = null) {
         e.target.disabled = true;
         try {
           if (edit) {
-            await SAPI.patch('/super/clinics/' + c.id, {
+            const body = {
               name: root.querySelector('#c-name').value, phone: root.querySelector('#c-phone').value || null,
               email: root.querySelector('#c-email').value || null, address: root.querySelector('#c-address').value || null,
               plan_id: root.querySelector('#c-plan').value || null,
-            });
-            toast('تم حفظ العيادة');
+            };
+            const ae = root.querySelector('#c-admin-email')?.value.trim();
+            const ap = root.querySelector('#c-admin-pass')?.value.trim();
+            if (ae) body.admin_email = ae;
+            if (ap) body.admin_password = ap;
+            await SAPI.patch('/super/clinics/' + c.id, body);
+            toast(ap ? 'تم حفظ العيادة وتحديث كلمة المرور' : 'تم حفظ العيادة');
           } else {
             await SAPI.post('/super/clinics', {
               name: root.querySelector('#c-name').value, admin_name: root.querySelector('#c-admin').value,
