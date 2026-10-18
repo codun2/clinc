@@ -59,10 +59,11 @@ const App = {
   async loadBadges() {
     try {
       App.badges = await API.get('/admin/badges');
-      const q = App.badges.queue;
+      // عدّاد "المواعيد" = طلبات حجز جديدة بانتظار التأكيد + مَن في الانتظار الآن
+      const n = (App.badges.pending || 0) + (App.badges.queue || 0);
       const nav = document.querySelector('.nav-item[data-page="appointments"]');
       nav?.querySelector('.count')?.remove();
-      if (q > 0 && nav) { const s = document.createElement('span'); s.className = 'count'; s.textContent = q; nav.appendChild(s); }
+      if (n > 0 && nav) { const s = document.createElement('span'); s.className = 'count'; s.textContent = n; nav.appendChild(s); }
     } catch {}
   },
 

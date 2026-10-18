@@ -40,9 +40,18 @@ class AdminAppointmentController extends Controller
 
         $all = $scope(Appointment::whereDate('scheduled_at', $date));
 
+        // طلبات حجز قادمة بانتظار تأكيد الطبيب — عبر كل التواريخ (لا تختفي بتغيير اليوم).
+        $pending = $scope(Appointment::where('status', 'scheduled')
+            ->where('scheduled_at', '>=', now()->startOfDay()))
+            ->with(['patient:id,name,file_no,phone', 'doctor:id,name'])
+            ->orderBy('scheduled_at')
+            ->limit(20)
+            ->get();
+
         return response()->json([
             'appointments' => $appointments,
             'queue'        => $queue,
+            'pending'      => $pending, // طلبات جديدة تحتاج تأكيداً
             'scoped'       => $onlyMine, // تُخبر الواجهة أن تخفي فلتر الأطباء
             'summary'      => [
                 'total'     => (clone $all)->count(),

@@ -83,6 +83,14 @@ Pages.appointments = async (el, date) => {
     <span class="chip on" data-doc="">كل الأطباء</span>
     ${docs.doctors.map((x) => `<span class="chip" data-doc="${x.id}">${esc(x.name)}</span>`).join('')}
   </div>`}
+  ${d.pending && d.pending.length ? `<div class="card" style="margin-bottom:14px;border-color:var(--teal)">
+    <div class="card-h"><b><i class="ti ti-calendar-plus" style="color:var(--teal)"></i> طلبات حجز بانتظار التأكيد</b><span class="badge b-teal">${d.pending.length}</span></div>
+    <div class="pad" id="pending-list">${d.pending.map((a) => `
+      <div class="appt a-amber" data-id="${a.id}" data-pid="${a.patient.id}" data-status="scheduled" style="cursor:pointer">
+        <div><b>${esc(a.patient.name)}</b> <small>${dateOf(a.scheduled_at)} · ${timeOf(a.scheduled_at)} · ${esc(a.department || '')}${a.doctor ? ' · ' + esc(a.doctor.name) : ''}</small></div>
+        <span class="badge b-warn">جديد — اضغط للتأكيد</span>
+      </div>`).join('')}</div>
+  </div>` : ''}
   <div class="grid2">
     <div class="card"><div class="card-h"><b>جدول اليوم</b></div><div class="pad" id="sched">
       ${d.appointments.length ? d.appointments.map((a) => {
@@ -130,6 +138,9 @@ Pages.appointments = async (el, date) => {
   const bindApptClicks = () => el.querySelectorAll('#sched .appt').forEach((a) =>
     a.onclick = () => AppointmentActions({ id: a.dataset.id, status: a.dataset.status, pid: a.dataset.pid }, () => App.go('appointments', date)));
   bindApptClicks();
+  // طلبات بانتظار التأكيد — نقرها يفتح مودال الإجراءات أيضاً
+  el.querySelectorAll('#pending-list .appt').forEach((a) =>
+    a.onclick = () => AppointmentActions({ id: a.dataset.id, status: a.dataset.status, pid: a.dataset.pid }, () => App.go('appointments', date)));
   el.querySelectorAll('[data-consult]').forEach((b) => b.onclick = () => startConsultation({ appointment_id: b.dataset.consult }));
 };
 

@@ -81,11 +81,19 @@ class AdminAuthController extends Controller
     public function badges(Request $request): JsonResponse
     {
         $user = $request->user();
+        // الطبيب يرى أرقامه هو فقط؛ المدير/الاستقبال يرون كامل العيادة.
+        $onlyMine = $user->title && $user->role !== 'admin';
+        $scope = fn ($q) => $onlyMine ? $q->where('doctor_id', $user->id) : $q;
 
         return response()->json([
+            // طلبات حجز جديدة بانتظار التأكيد (قادمة) — تُعرض كعدّاد على "المواعيد"
+            'pending' => $user->hasPerm('appointments')
+                ? $scope(\App\Models\Appointment::where('status', 'scheduled')
+                    ->where('scheduled_at', '>=', now()->startOfDay()))->count()
+                : null,
             // قائمة الانتظار الحالية (وصلوا ولم يُكشف عليهم بعد)
             'queue' => $user->hasPerm('appointments')
-                ? \App\Models\Appointment::where('status', 'arrived')->count()
+                ? $scope(\App\Models\Appointment::where('status', 'arrived'))->count()
                 : null,
             'pending_invoices' => $user->hasPerm('invoices')
                 ? \App\Models\Invoice::where('status', 'pending')->count()
