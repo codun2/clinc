@@ -48,10 +48,19 @@ class AdminAppointmentController extends Controller
             ->limit(20)
             ->get();
 
+        // مواعيد مؤكّدة قادمة (من الآن فصاعداً، عبر كل التواريخ) للمتابعة بعد القبول.
+        $upcoming = $scope(Appointment::where('status', 'confirmed')
+            ->where('scheduled_at', '>=', now()))
+            ->with(['patient:id,name,file_no,phone', 'doctor:id,name'])
+            ->orderBy('scheduled_at')
+            ->limit(50)
+            ->get();
+
         return response()->json([
             'appointments' => $appointments,
             'queue'        => $queue,
             'pending'      => $pending, // طلبات جديدة تحتاج تأكيداً
+            'upcoming'     => $upcoming, // مؤكّدة قادمة للمتابعة
             'scoped'       => $onlyMine, // تُخبر الواجهة أن تخفي فلتر الأطباء
             'summary'      => [
                 'total'     => (clone $all)->count(),

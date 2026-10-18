@@ -115,6 +115,16 @@ Pages.appointments = async (el, date) => {
             <button class="btn btn-soft btn-sm" data-consult="${q.id}" data-pid="${q.patient.id}">بدء الكشف</button>
           </div>`).join('') : '<div class="empty">لا أحد في الانتظار</div>'}</div>
       </div>
+      <div class="card"><div class="card-h"><b>مواعيد قادمة مؤكّدة</b><span class="badge b-teal">${(d.upcoming || []).length}</span></div>
+        <div class="pad" id="upcoming" style="max-height:340px;overflow:auto">${(d.upcoming || []).length ? d.upcoming.map((a) =>
+          `<div class="pend-row" data-id="${a.id}" data-status="${a.status}" data-pid="${a.patient.id}" style="display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:9px;padding:9px 11px;margin-bottom:8px;cursor:pointer">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600">${esc(a.patient.name)}</div>
+              <div class="pend-meta"><i class="ti ti-calendar" style="font-size:12px"></i> ${dateOf(a.scheduled_at)} · ${timeOf(a.scheduled_at)}${a.department ? ' · ' + esc(a.department) : ''}${a.doctor ? ' · ' + esc(a.doctor.name) : ''}</div>
+            </div>
+            <button class="btn btn-soft btn-sm" data-arrive="${a.id}"><i class="ti ti-user-check"></i> وصل</button>
+          </div>`).join('') : '<div class="empty">لا مواعيد قادمة مؤكّدة</div>'}</div>
+      </div>
       <div class="card"><div class="card-h"><b>ملخص اليوم</b></div><div class="pad">
         <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">إجمالي المواعيد</span><b>${d.summary.total}</b></div>
         <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">حضر / أُكمل</span><b style="color:var(--ok)">${d.summary.completed}</b></div>
@@ -152,6 +162,15 @@ Pages.appointments = async (el, date) => {
   el.querySelectorAll('#pending-list .pend-row').forEach((r) =>
     r.onclick = () => AppointmentActions({ id: r.dataset.id, status: r.dataset.status, pid: r.dataset.pid }, () => App.go('appointments', date)));
   el.querySelectorAll('[data-consult]').forEach((b) => b.onclick = () => startConsultation({ appointment_id: b.dataset.consult }));
+  // مواعيد قادمة مؤكّدة: زر "وصل" يسجّل الوصول مباشرة، ونقر الصف يفتح كل الإجراءات
+  el.querySelectorAll('#upcoming [data-arrive]').forEach((b) => b.onclick = async (e) => {
+    e.stopPropagation();
+    b.disabled = true;
+    try { await API.patch('/admin/appointments/' + b.dataset.arrive + '/status', { status: 'arrived' }); toast('تم تسجيل وصول المريض'); App.loadBadges(); App.go('appointments', date); }
+    catch (ex) { toast(ex.message, 'err'); b.disabled = false; }
+  });
+  el.querySelectorAll('#upcoming .pend-row').forEach((r) =>
+    r.onclick = () => AppointmentActions({ id: r.dataset.id, status: r.dataset.status, pid: r.dataset.pid }, () => App.go('appointments', date)));
 };
 
 // ============ المرضى ============
@@ -318,25 +337,117 @@ Pages.reports = async (el) => {
 };
 
 // ============ الأطباء والموظفون ============
-Pages.staff = async (el) => {
-  const d = await API.get('/admin/staff');
-  const roleName = (u) => u.title || (u.role === 'admin' ? 'مدير العيادة' : 'موظف');
-  const doctors = d.staff.filter((u) => u.title);
-  const others = d.staff.filter((u) => !u.title);
+Pages.staff = async (el, state = {}) => {
+  const q = state.q || ''; const status = state.status || '';
+  const d = await API.get(`/admin/employees?${q ? 'q=' + encodeURIComponent(q) + '&' : ''}${status ? 'status=' + status : ''}`);
+  const s = d.stats;
   el.innerHTML = `
-  <div class="topbar"><div><h1>الأطباء والموظفون</h1><div class="sub">${d.staff.length} مستخدمين</div></div>
-    <div class="top-actions"><button class="btn btn-primary" id="new-staff"><i class="ti ti-user-plus"></i> إضافة مستخدم</button></div></div>
-  <div class="grid3">${doctors.map((u) => `<div class="card pad" data-uid="${u.id}" style="text-align:center;cursor:pointer">
-    <div class="avatar" style="width:56px;height:56px;font-size:17px;margin:4px auto 10px">${esc(initials(u.name))}</div>
-    <b>${esc(u.name)}</b><div style="font-size:12px;color:var(--muted)">${esc(u.title)}</div>
-    <div style="display:flex;gap:6px;justify-content:center;margin-top:10px"><span class="badge b-teal">${u.role === 'admin' ? 'مدير' : 'طبيب'}</span><span class="badge ${u.status === 'active' ? 'b-ok' : 'b-mut'}">${u.status === 'active' ? 'نشط' : 'موقوف'}</span></div>
-  </div>`).join('') || '<div class="empty">لا أطباء</div>'}</div>
-  <div class="card" style="margin-top:16px"><div class="card-h"><b>بقية الفريق</b></div>
-    ${others.length ? `<table><tr><th>الاسم</th><th>الدور</th><th>البريد</th><th>الحالة</th></tr>
-    ${others.map((u) => `<tr data-uid="${u.id}" style="cursor:pointer"><td><div class="cell-p"><div class="avatar">${esc(initials(u.name))}</div>${esc(u.name)}</div></td><td>${roleName(u)}</td><td style="direction:ltr;text-align:right">${esc(u.email)}</td><td><span class="badge ${u.status === 'active' ? 'b-ok' : 'b-mut'}">${u.status === 'active' ? 'نشط' : 'موقوف'}</span></td></tr>`).join('')}
-    </table>` : '<div class="empty">—</div>'}</div>`;
-  el.querySelector('#new-staff').onclick = () => StaffForm();
-  el.querySelectorAll('[data-uid]').forEach((n) => n.onclick = () => { const u = d.staff.find((x) => x.id == n.dataset.uid); if (u) StaffForm(u); });
+  <div class="topbar">
+    <div><h1>الموظفون</h1><div class="sub">${s.total} موظف · ${s.active} نشط</div></div>
+    <div class="top-actions">
+      <div class="search" style="min-width:240px"><i class="ti ti-search"></i><input id="esearch" placeholder="بالاسم، الرقم الوظيفي، أو الجوال…" value="${esc(q)}"></div>
+      <button class="btn btn-primary" id="new-emp"><i class="ti ti-user-plus"></i> موظف جديد</button>
+    </div>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><div class="t"><i class="ti ti-users"></i> إجمالي الموظفين</div><div class="v">${s.total}</div><div class="d">${s.active} نشط · ${s.inactive} موقوف</div></div>
+    <div class="kpi"><div class="t"><i class="ti ti-user-check"></i> على رأس العمل</div><div class="v">${s.active}</div><div class="d up">نشطون الآن</div></div>
+    <div class="kpi"><div class="t"><i class="ti ti-cash"></i> إجمالي الرواتب</div><div class="v">${money(s.payroll)}</div><div class="d">ريال / شهرياً</div></div>
+  </div>
+  <div class="chips" style="margin-bottom:14px">
+    <span class="chip ${!status ? 'on' : ''}" data-s="">الكل</span>
+    <span class="chip ${status === 'active' ? 'on' : ''}" data-s="active">النشطون</span>
+    <span class="chip ${status === 'inactive' ? 'on' : ''}" data-s="inactive">الموقوفون</span>
+  </div>
+  <div class="card">
+    ${d.employees.length ? `<table>
+      <tr><th>الموظف</th><th>الرقم الوظيفي</th><th>القسم</th><th>الجوال</th><th>الحساب</th><th>الحالة</th><th></th></tr>
+      ${d.employees.map((e) => `<tr class="row" data-eid="${e.id}">
+        <td><div class="cell-p"><div class="avatar">${esc(initials(e.name))}</div><div>${esc(e.name)}<small>${esc(e.job_title || '—')}</small></div></div></td>
+        <td style="direction:ltr;text-align:right">${esc(e.employee_number || '—')}</td>
+        <td>${esc(e.department || '—')}</td>
+        <td style="direction:ltr;text-align:right">${esc(e.phone || '—')}</td>
+        <td>${e.user_id ? '<span class="badge b-teal"><i class="ti ti-key"></i> له دخول</span>' : '<span class="badge b-mut">بلا دخول</span>'}</td>
+        <td><span class="badge ${e.status === 'active' ? 'b-ok' : 'b-mut'}">${e.status === 'active' ? 'نشط' : 'موقوف'}</span></td>
+        <td><i class="ti ti-chevron-left" style="color:var(--faint)"></i></td>
+      </tr>`).join('')}
+    </table>` : '<div class="empty">لا موظفين مطابقين</div>'}
+  </div>`;
+  let t;
+  el.querySelector('#esearch').oninput = (e) => { clearTimeout(t); const v = e.target.value; t = setTimeout(() => Pages.staff(el, { q: v, status }), 350); };
+  el.querySelectorAll('.chip[data-s]').forEach((c) => c.onclick = () => Pages.staff(el, { q, status: c.dataset.s }));
+  el.querySelectorAll('tr.row').forEach((r) => r.onclick = () => App.go('employee', r.dataset.eid));
+  el.querySelector('#new-emp').onclick = () => EmployeeForm();
+};
+
+// ============ ملف الموظف (تفاصيل كاملة) ============
+Pages.employee = async (el, id) => {
+  const { employee: e } = await API.get('/admin/employees/' + id);
+  const GENDER = { male: 'ذكر', female: 'أنثى' };
+  const MARITAL = { single: 'أعزب', married: 'متزوج', divorced: 'مطلّق', widowed: 'أرمل' };
+  const row = (label, val) => `<div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">${label}</span><b>${val || '—'}</b></div>`;
+  // تنبيه انتهاء الوثائق
+  const expiring = (dt) => dt && (new Date(dt) - Date.now()) / 86400000 < 60;
+  const expBadge = (dt) => dt ? (expiring(dt) ? `<span class="badge b-warn" style="margin-right:6px"><i class="ti ti-alert-triangle"></i> قريب</span>` : '') : '';
+  el.innerHTML = `
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" id="back" style="padding:8px 11px"><i class="ti ti-arrow-right"></i></button>
+      <div class="avatar" style="width:46px;height:46px;font-size:15px">${esc(initials(e.name))}</div>
+      <div><h1 style="font-size:17px">${esc(e.name)}</h1><div class="sub">${esc(e.employee_number || '')} · ${esc(e.job_title || 'موظف')}${e.department ? ' · ' + esc(e.department) : ''}</div></div>
+      <span class="badge ${e.status === 'active' ? 'b-ok' : 'b-mut'}">${e.status === 'active' ? 'نشط' : 'موقوف'}</span>
+      ${e.user_id ? '<span class="badge b-teal"><i class="ti ti-key"></i> له حساب دخول</span>' : ''}
+    </div>
+    <div class="top-actions">
+      <button class="btn btn-ghost" id="edit-e"><i class="ti ti-edit"></i> تعديل</button>
+      <button class="btn btn-danger" id="del-e"><i class="ti ti-trash"></i> حذف</button>
+    </div>
+  </div>
+  <div class="grid2">
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card"><div class="card-h"><b><i class="ti ti-user" style="color:var(--teal)"></i> البيانات الشخصية</b></div><div class="pad">
+        ${row('الاسم (إنجليزي)', esc(e.name_en || ''))}
+        ${row('تاريخ الميلاد', e.birth_date ? dateOf(e.birth_date) + ' · ' + ageOf(e.birth_date) : '')}
+        ${row('الجنس', GENDER[e.gender] || '')}
+        ${row('الجنسية', esc(e.nationality || ''))}
+        ${row('الحالة الاجتماعية', MARITAL[e.marital_status] || '')}
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0"><span style="color:var(--muted)">الجوال</span><b style="direction:ltr">${esc(e.phone || '—')}</b></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0"><span style="color:var(--muted)">البريد</span><b style="direction:ltr">${esc(e.email || '—')}</b></div>
+      </div></div>
+      <div class="card"><div class="card-h"><b><i class="ti ti-id" style="color:var(--teal)"></i> الوثائق</b></div><div class="pad">
+        ${row('رقم الهوية', esc(e.national_id || ''))}
+        ${row('إصدار الهوية', e.id_issue_date ? dateOf(e.id_issue_date) : '')}
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">انتهاء الهوية</span><b>${expBadge(e.id_expiry_date)}${e.id_expiry_date ? dateOf(e.id_expiry_date) : '—'}</b></div>
+        ${row('رقم الجواز', esc(e.passport_number || ''))}
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0"><span style="color:var(--muted)">انتهاء الجواز</span><b>${expBadge(e.passport_expiry_date)}${e.passport_expiry_date ? dateOf(e.passport_expiry_date) : '—'}</b></div>
+      </div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card"><div class="card-h"><b><i class="ti ti-briefcase" style="color:var(--teal)"></i> التوظيف</b></div><div class="pad">
+        ${row('المسمّى الوظيفي', esc(e.job_title || ''))}
+        ${row('القسم', esc(e.department || ''))}
+        ${row('تاريخ التعيين', e.hire_date ? dateOf(e.hire_date) : '')}
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0"><span style="color:var(--muted)">الحالة</span><span class="badge ${e.status === 'active' ? 'b-ok' : 'b-mut'}">${e.status === 'active' ? 'نشط' : 'موقوف'}</span></div>
+      </div></div>
+      <div class="card"><div class="card-h"><b><i class="ti ti-cash" style="color:var(--teal)"></i> الراتب والبنك</b></div><div class="pad">
+        ${row('الراتب الأساسي', money(e.base_salary) + ' ريال')}
+        ${row('IBAN', esc(e.iban || ''))}
+        ${row('البنك', esc(e.bank_name || ''))}
+      </div></div>
+      ${e.user ? `<div class="card"><div class="card-h"><b><i class="ti ti-key" style="color:var(--teal)"></i> حساب الدخول</b></div><div class="pad">
+        ${row('البريد', esc(e.user.email || ''))}
+        ${row('الدور', e.user.role === 'admin' ? 'مدير العيادة' : 'موظف')}
+        ${row('الصلاحيات', (e.user.permissions || []).length ? esc((e.user.permissions || []).join('، ')) : 'كل الصلاحيات')}
+      </div></div>` : `<div class="card pad" style="text-align:center;color:var(--muted);font-size:13px">لا حساب دخول لهذا الموظف</div>`}
+      ${e.notes ? `<div class="card"><div class="card-h"><b>ملاحظات</b></div><div class="pad" style="font-size:13px;color:var(--text-secondary);line-height:1.8">${esc(e.notes)}</div></div>` : ''}
+    </div>
+  </div>`;
+  el.querySelector('#back').onclick = () => App.go('staff');
+  el.querySelector('#edit-e').onclick = () => EmployeeForm(e);
+  el.querySelector('#del-e').onclick = () => {
+    if (!confirm('حذف ملف الموظف ' + e.name + '؟ سيُوقَف حساب دخوله إن وُجد.')) return;
+    API.del('/admin/employees/' + e.id).then(() => { toast('تم حذف الموظف'); App.go('staff'); }).catch((ex) => toast(ex.message, 'err'));
+  };
 };
 
 // ============ الإعدادات ============

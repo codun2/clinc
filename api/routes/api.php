@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AdminAppointmentController;
 use App\Http\Controllers\Api\AdminAuthController;
 use App\Http\Controllers\Api\AdminConsultationController;
 use App\Http\Controllers\Api\AdminDashboardController;
+use App\Http\Controllers\Api\AdminEmployeeController;
 use App\Http\Controllers\Api\AdminInventoryController;
 use App\Http\Controllers\Api\AdminInvoiceController;
 use App\Http\Controllers\Api\AdminNotificationController;
@@ -96,6 +97,13 @@ Route::prefix('admin')->group(function () {
             Route::delete('staff/{user}', [AdminStaffController::class, 'destroy']);
             Route::post('staff/{user}/photo', [AdminStaffController::class, 'uploadPhoto']);
             Route::delete('staff/{user}/photo', [AdminStaffController::class, 'deletePhoto']);
+
+            // ملفات الموظفين (HR) — صفحة وتفاصيل كاملة + حساب دخول اختياري
+            Route::get('employees', [AdminEmployeeController::class, 'index']);
+            Route::post('employees', [AdminEmployeeController::class, 'store']);
+            Route::get('employees/{employee}', [AdminEmployeeController::class, 'show']);
+            Route::patch('employees/{employee}', [AdminEmployeeController::class, 'update']);
+            Route::delete('employees/{employee}', [AdminEmployeeController::class, 'destroy']);
         });
 
         // المخزون (أدوية) — القراءة لكل الموظفين (اقتراحات الوصفة)

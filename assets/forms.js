@@ -295,6 +295,102 @@ async function InvoiceForm() {
   });
 }
 
+// ===== نموذج الموظف (HR) — متعدد الأقسام + حساب دخول اختياري =====
+function EmployeeForm(e = null) {
+  const v = (k) => esc(e?.[k] ?? '');
+  const dv = (k) => e?.[k] ? String(e[k]).slice(0, 10) : '';
+  const sel = (k, val) => e?.[k] === val ? 'selected' : '';
+  const sec = (title, icon, body) => `<div style="font-size:12.5px;font-weight:700;color:var(--teal-dark);margin:14px 0 8px;display:flex;align-items:center;gap:6px"><i class="ti ${icon}"></i> ${title}</div>${body}`;
+  const g2 = (a, b) => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">${a}${b}</div>`;
+  const perms = [['appointments', 'المواعيد'], ['patients', 'المرضى'], ['consultations', 'الكشوفات'], ['invoices', 'الفواتير'], ['inventory', 'المخزون'], ['staff', 'الموظفون'], ['settings', 'الإعدادات']];
+
+  openModal({
+    title: e ? 'تعديل بيانات الموظف' : 'موظف جديد',
+    width: 620,
+    body: `
+      ${sec('الهوية', 'ti-user', `
+        ${g2(
+          `<div class="field"><label>الاسم الكامل *</label><input id="e-name" value="${v('name')}"></div>`,
+          `<div class="field"><label>الاسم (إنجليزي)</label><input id="e-name_en" value="${v('name_en')}"></div>`)}
+        ${g2(
+          `<div class="field"><label>الرقم الوظيفي</label><input id="e-employee_number" value="${v('employee_number')}" placeholder="تلقائي إن تُرك فارغاً"></div>`,
+          `<div class="field"><label>القسم</label><input id="e-department" value="${v('department')}" placeholder="باطنية…"></div>`)}
+        ${g2(
+          `<div class="field"><label>المسمّى الوظيفي</label><input id="e-job_title" value="${v('job_title')}"></div>`,
+          `<div class="field"><label>المسمّى (إنجليزي)</label><input id="e-job_title_en" value="${v('job_title_en')}"></div>`)}
+        ${g2(
+          `<div class="field"><label>الجنس</label><select id="e-gender"><option value="">—</option><option value="male" ${sel('gender', 'male')}>ذكر</option><option value="female" ${sel('gender', 'female')}>أنثى</option></select></div>`,
+          `<div class="field"><label>تاريخ الميلاد</label><input id="e-birth_date" type="date" value="${dv('birth_date')}"></div>`)}
+        ${g2(
+          `<div class="field"><label>الجنسية</label><input id="e-nationality" value="${v('nationality')}"></div>`,
+          `<div class="field"><label>الحالة الاجتماعية</label><select id="e-marital_status"><option value="">—</option><option value="single" ${sel('marital_status', 'single')}>أعزب</option><option value="married" ${sel('marital_status', 'married')}>متزوج</option><option value="divorced" ${sel('marital_status', 'divorced')}>مطلّق</option><option value="widowed" ${sel('marital_status', 'widowed')}>أرمل</option></select></div>`)}
+      `)}
+      ${sec('التواصل', 'ti-phone', g2(
+        `<div class="field"><label>الجوال</label><input id="e-phone" value="${v('phone')}"></div>`,
+        `<div class="field"><label>البريد</label><input id="e-email" value="${v('email')}"></div>`))}
+      ${sec('الوثائق', 'ti-id', `
+        ${g2(
+          `<div class="field"><label>رقم الهوية</label><input id="e-national_id" value="${v('national_id')}"></div>`,
+          `<div class="field"><label>رقم الجواز</label><input id="e-passport_number" value="${v('passport_number')}"></div>`)}
+        ${g2(
+          `<div class="field"><label>إصدار الهوية</label><input id="e-id_issue_date" type="date" value="${dv('id_issue_date')}"></div>`,
+          `<div class="field"><label>انتهاء الهوية</label><input id="e-id_expiry_date" type="date" value="${dv('id_expiry_date')}"></div>`)}
+        ${g2(
+          `<div class="field"><label>إصدار الجواز</label><input id="e-passport_issue_date" type="date" value="${dv('passport_issue_date')}"></div>`,
+          `<div class="field"><label>انتهاء الجواز</label><input id="e-passport_expiry_date" type="date" value="${dv('passport_expiry_date')}"></div>`)}
+      `)}
+      ${sec('التوظيف والراتب', 'ti-briefcase', `
+        ${g2(
+          `<div class="field"><label>تاريخ التعيين</label><input id="e-hire_date" type="date" value="${dv('hire_date')}"></div>`,
+          `<div class="field"><label>الحالة</label><select id="e-status"><option value="active" ${sel('status', 'active')}>نشط</option><option value="inactive" ${sel('status', 'inactive')}>موقوف</option></select></div>`)}
+        ${g2(
+          `<div class="field"><label>الراتب الأساسي</label><input id="e-base_salary" type="number" value="${e?.base_salary ?? ''}" placeholder="0"></div>`,
+          `<div class="field"><label>البنك</label><input id="e-bank_name" value="${v('bank_name')}"></div>`)}
+        <div class="field"><label>IBAN</label><input id="e-iban" value="${v('iban')}" style="direction:ltr"></div>
+      `)}
+      ${sec('ملاحظات', 'ti-note', `<div class="field" style="margin:0"><textarea id="e-notes" rows="2">${v('notes')}</textarea></div>`)}
+      ${!e || !e.user_id ? sec('حساب الدخول (اختياري)', 'ti-key', `
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:8px"><input type="checkbox" id="e-create_account" style="width:auto"> إنشاء حساب دخول لهذا الموظف</label>
+        <div id="account-fields" class="hidden">
+          ${g2(
+            `<div class="field"><label>البريد *</label><input id="e-account_email" type="email"></div>`,
+            `<div class="field"><label>كلمة المرور *</label><input id="e-account_password" type="text" placeholder="6 أحرف على الأقل"></div>`)}
+          <div class="field"><label>الدور</label><select id="e-account_role"><option value="staff">موظف (صلاحيات محدّدة)</option><option value="admin">مدير العيادة (كل الصلاحيات)</option></select></div>
+          <div class="field" style="margin:0"><label>الصلاحيات (للموظف)</label><div id="e-perms" style="display:flex;flex-wrap:wrap;gap:7px">${perms.map(([k, lbl]) => `<label class="chip" style="cursor:pointer;display:flex;gap:5px;align-items:center"><input type="checkbox" value="${k}" style="width:auto"> ${lbl}</label>`).join('')}</div></div>
+        </div>
+      `) : ''}
+    `,
+    footer: `<button class="btn btn-primary" id="e-save">${e ? 'حفظ' : 'إضافة الموظف'}</button><button class="btn btn-ghost" id="e-cancel">إلغاء</button>`,
+    onOpen: (root, close) => {
+      root.querySelector('#e-cancel').onclick = close;
+      const acc = root.querySelector('#e-create_account');
+      if (acc) acc.onchange = () => root.querySelector('#account-fields').classList.toggle('hidden', !acc.checked);
+      root.querySelector('#e-save').onclick = async (ev) => {
+        const val = (k) => { const n = root.querySelector('#e-' + k); return n ? (n.value.trim?.() ?? n.value) : undefined; };
+        const body = {};
+        ['employee_number', 'name', 'name_en', 'job_title', 'job_title_en', 'department', 'phone', 'email',
+          'national_id', 'id_issue_date', 'id_expiry_date', 'passport_number', 'passport_issue_date', 'passport_expiry_date',
+          'birth_date', 'gender', 'nationality', 'marital_status', 'hire_date', 'base_salary', 'iban', 'bank_name', 'status', 'notes']
+          .forEach((k) => { const x = val(k); if (x !== undefined && x !== '') body[k] = x; });
+        if (!body.name) { toast('اسم الموظف مطلوب', 'err'); return; }
+        if (acc && acc.checked) {
+          body.create_account = true;
+          body.account_email = val('account_email');
+          body.account_password = val('account_password');
+          body.account_role = val('account_role');
+          body.account_permissions = [...root.querySelectorAll('#e-perms input:checked')].map((c) => c.value);
+        }
+        ev.target.disabled = true;
+        try {
+          const r = e ? await API.patch('/admin/employees/' + e.id, body) : await API.post('/admin/employees', body);
+          close(); toast(e ? 'تم حفظ البيانات' : 'تم إضافة الموظف');
+          App.go('employee', r.employee.id);
+        } catch (ex) { toast(ex.message, 'err'); ev.target.disabled = false; }
+      };
+    },
+  });
+}
+
 // ===== إجراءات الموعد (تأكيد/وصول/كشف/لم يحضر/إلغاء) =====
 function AppointmentActions(appt, done) {
   const setStatus = async (status) => {
