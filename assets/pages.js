@@ -83,12 +83,16 @@ Pages.appointments = async (el, date) => {
     <span class="chip on" data-doc="">كل الأطباء</span>
     ${docs.doctors.map((x) => `<span class="chip" data-doc="${x.id}">${esc(x.name)}</span>`).join('')}
   </div>`}
-  ${d.pending && d.pending.length ? `<div class="card" style="margin-bottom:14px;border-color:var(--teal)">
+  ${d.pending && d.pending.length ? `<div class="card" style="margin-bottom:14px">
     <div class="card-h"><b><i class="ti ti-calendar-plus" style="color:var(--teal)"></i> طلبات حجز بانتظار التأكيد</b><span class="badge b-teal">${d.pending.length}</span></div>
     <div class="pad" id="pending-list">${d.pending.map((a) => `
-      <div class="appt a-amber" data-id="${a.id}" data-pid="${a.patient.id}" data-status="scheduled" style="cursor:pointer">
-        <div><b>${esc(a.patient.name)}</b> <small>${dateOf(a.scheduled_at)} · ${timeOf(a.scheduled_at)} · ${esc(a.department || '')}${a.doctor ? ' · ' + esc(a.doctor.name) : ''}</small></div>
-        <span class="badge b-warn">جديد — اضغط للتأكيد</span>
+      <div class="pend-row" data-id="${a.id}" data-pid="${a.patient.id}" data-status="scheduled">
+        <div class="pend-ic"><i class="ti ti-clock-hour-4"></i></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13.5px;font-weight:600">${esc(a.patient.name)}<span class="pend-new">جديد</span></div>
+          <div class="pend-meta"><i class="ti ti-calendar" style="font-size:13px"></i> ${dateOf(a.scheduled_at)} · ${timeOf(a.scheduled_at)}${a.department ? ' · ' + esc(a.department) : ''}</div>
+        </div>
+        <button class="btn btn-primary btn-sm" data-confirm="${a.id}"><i class="ti ti-check"></i> تأكيد</button>
       </div>`).join('')}</div>
   </div>` : ''}
   <div class="grid2">
@@ -138,9 +142,15 @@ Pages.appointments = async (el, date) => {
   const bindApptClicks = () => el.querySelectorAll('#sched .appt').forEach((a) =>
     a.onclick = () => AppointmentActions({ id: a.dataset.id, status: a.dataset.status, pid: a.dataset.pid }, () => App.go('appointments', date)));
   bindApptClicks();
-  // طلبات بانتظار التأكيد — نقرها يفتح مودال الإجراءات أيضاً
-  el.querySelectorAll('#pending-list .appt').forEach((a) =>
-    a.onclick = () => AppointmentActions({ id: a.dataset.id, status: a.dataset.status, pid: a.dataset.pid }, () => App.go('appointments', date)));
+  // طلبات بانتظار التأكيد: زر "تأكيد" يؤكّد مباشرة، ونقر بقية الصف يفتح كل الإجراءات
+  el.querySelectorAll('#pending-list [data-confirm]').forEach((b) => b.onclick = async (e) => {
+    e.stopPropagation();
+    b.disabled = true;
+    try { await API.patch('/admin/appointments/' + b.dataset.confirm + '/status', { status: 'confirmed' }); toast('تم تأكيد الموعد'); App.loadBadges(); App.go('appointments', date); }
+    catch (ex) { toast(ex.message, 'err'); b.disabled = false; }
+  });
+  el.querySelectorAll('#pending-list .pend-row').forEach((r) =>
+    r.onclick = () => AppointmentActions({ id: r.dataset.id, status: r.dataset.status, pid: r.dataset.pid }, () => App.go('appointments', date)));
   el.querySelectorAll('[data-consult]').forEach((b) => b.onclick = () => startConsultation({ appointment_id: b.dataset.consult }));
 };
 

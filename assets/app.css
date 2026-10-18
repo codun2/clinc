@@ -167,6 +167,13 @@ tr.row:hover td{background:#fafbfc;cursor:pointer}
 .cs-opt:hover{background:var(--bg)}
 .cs-opt.sel{background:var(--teal-50);color:var(--teal-dark);font-weight:600}
 .cs-opt .ti-check{color:var(--teal);font-size:16px}
+/* ===== صفوف طلبات الحجز المعلّقة ===== */
+.pend-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:var(--surface);transition:border-color .15s,background .15s}
+.pend-row:last-child{margin-bottom:0}
+.pend-row:hover{border-color:var(--teal);background:#fafdfd}
+.pend-ic{width:36px;height:36px;border-radius:10px;background:var(--warn-bg);color:#b45309;display:grid;place-items:center;font-size:17px;flex:none}
+.pend-new{font-size:10px;font-weight:700;color:#b45309;background:var(--warn-bg);border-radius:20px;padding:2px 8px;margin-right:7px;vertical-align:middle}
+.pend-meta{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;margin-top:2px}
 .sugg{position:relative}
 .sugg-list{position:absolute;top:100%;right:0;left:0;background:var(--surface);border:1px solid var(--border);border-radius:9px;box-shadow:var(--shadow);z-index:20;max-height:200px;overflow:auto}
 .sugg-item{padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border)}
