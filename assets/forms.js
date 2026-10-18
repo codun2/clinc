@@ -63,6 +63,7 @@ Pages.consult = async (el, id) => {
         <input id="rx-input" placeholder="أضف دواء…" style="border:none;outline:none;background:transparent;flex:1;font-family:inherit;font-size:13px;color:var(--text)">
         <span style="font-size:11px">تحقق تلقائي من الحساسية</span>
       </div>
+      <button class="btn btn-ghost btn-sm" id="send-pharmacy" style="margin-top:9px;width:100%;justify-content:center"><i class="ti ti-send"></i> إرسال الوصفة للصيدلية</button>
     </div>
 
     <div style="display:flex;flex-direction:column;gap:12px">
@@ -156,6 +157,17 @@ Pages.consult = async (el, id) => {
     if (val) { state.followup = val + ' 10:00:00'; toast('سيُحجز موعد متابعة ' + val + ' عند الإنهاء'); }
   };
   el.querySelector('#c-back').onclick = () => App.go('patient', p.id);
+
+  // إرسال الوصفة للصيدلية (طلب صرف للصيدلي)
+  el.querySelector('#send-pharmacy').onclick = async (e) => {
+    if (!state.rx.length) { toast('أضف دواءً واحداً للوصفة أولاً', 'err'); return; }
+    e.target.disabled = true;
+    try {
+      await API.post('/admin/pharmacy/orders', { patient_id: p.id, consultation_id: c.id, items: state.rx });
+      toast('أُرسلت الوصفة للصيدلية');
+    } catch (ex) { toast(ex.message, 'err'); }
+    e.target.disabled = false;
+  };
 
   // إنهاء الكشف — خطوة واحدة
   el.querySelector('#finish-btn').onclick = async (e) => {
@@ -302,7 +314,7 @@ function EmployeeForm(e = null) {
   const sel = (k, val) => e?.[k] === val ? 'selected' : '';
   const sec = (title, icon, body) => `<div style="font-size:12.5px;font-weight:700;color:var(--teal-dark);margin:14px 0 8px;display:flex;align-items:center;gap:6px"><i class="ti ${icon}"></i> ${title}</div>${body}`;
   const g2 = (a, b) => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">${a}${b}</div>`;
-  const perms = [['appointments', 'المواعيد'], ['patients', 'المرضى'], ['consultations', 'الكشوفات'], ['invoices', 'الفواتير'], ['inventory', 'المخزون'], ['staff', 'الموظفون'], ['settings', 'الإعدادات']];
+  const perms = [['appointments', 'المواعيد'], ['patients', 'المرضى'], ['consultations', 'الكشوفات'], ['invoices', 'الفواتير'], ['inventory', 'المخزون'], ['pharmacy', 'الصيدلية'], ['staff', 'الموظفون'], ['settings', 'الإعدادات']];
 
   openModal({
     title: e ? 'تعديل بيانات الموظف' : 'موظف جديد',

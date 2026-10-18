@@ -71,6 +71,7 @@ class AdminAuthController extends Controller
             'user'   => $user,
             'clinic' => [
                 'name'          => $s['clinic_name'] ?? ($clinic->name ?? 'Clinic'),
+                'slug'          => $clinic?->slug,
                 'logo'          => $s['clinic_photo'] ?? null,
                 'primary_color' => $s['primary_color'] ?? null,
                 'plan'          => $plan ? [

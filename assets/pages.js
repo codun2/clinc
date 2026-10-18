@@ -377,7 +377,7 @@ Pages.staff = async (el, state = {}) => {
   el.querySelector('#esearch').oninput = (e) => { clearTimeout(t); const v = e.target.value; t = setTimeout(() => Pages.staff(el, { q: v, status }), 350); };
   el.querySelectorAll('.chip[data-s]').forEach((c) => c.onclick = () => Pages.staff(el, { q, status: c.dataset.s }));
   el.querySelectorAll('tr.row').forEach((r) => r.onclick = () => App.go('employee', r.dataset.eid));
-  el.querySelector('#new-emp').onclick = () => EmployeeForm();
+  el.querySelector('#new-emp').onclick = () => App.go('employeeForm');
 };
 
 // ============ ملف الموظف (تفاصيل كاملة) ============
@@ -443,11 +443,171 @@ Pages.employee = async (el, id) => {
     </div>
   </div>`;
   el.querySelector('#back').onclick = () => App.go('staff');
-  el.querySelector('#edit-e').onclick = () => EmployeeForm(e);
+  el.querySelector('#edit-e').onclick = () => App.go('employeeForm', e);
   el.querySelector('#del-e').onclick = () => {
     if (!confirm('حذف ملف الموظف ' + e.name + '؟ سيُوقَف حساب دخوله إن وُجد.')) return;
     API.del('/admin/employees/' + e.id).then(() => { toast('تم حذف الموظف'); App.go('staff'); }).catch((ex) => toast(ex.message, 'err'));
   };
+};
+
+// ============ صفحة إضافة/تعديل موظف (صفحة كاملة بدل مودال) ============
+Pages.employeeForm = async (el, e = null) => {
+  const v = (k) => esc(e?.[k] ?? '');
+  const dv = (k) => e?.[k] ? String(e[k]).slice(0, 10) : '';
+  const sel = (k, val) => e?.[k] === val ? 'selected' : '';
+  const g2 = (a, b) => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">${a}${b}</div>`;
+  const card = (title, icon, body) => `<div class="card"><div class="card-h"><b><i class="ti ${icon}" style="color:var(--teal)"></i> ${title}</b></div><div class="pad">${body}</div></div>`;
+  const perms = [['appointments', 'المواعيد'], ['patients', 'المرضى'], ['consultations', 'الكشوفات'], ['invoices', 'الفواتير'], ['inventory', 'المخزون'], ['pharmacy', 'الصيدلية'], ['staff', 'الموظفون'], ['settings', 'الإعدادات']];
+
+  el.innerHTML = `
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn btn-ghost btn-sm" id="e-back" style="padding:8px 11px"><i class="ti ti-arrow-right"></i></button>
+      <div><h1>${e ? 'تعديل بيانات الموظف' : 'موظف جديد'}</h1><div class="sub">${e ? esc(e.name) : 'إضافة عضو جديد لفريق العيادة'}</div></div>
+    </div>
+    <div class="top-actions">
+      <button class="btn btn-ghost" id="e-cancel2">إلغاء</button>
+      <button class="btn btn-primary" id="e-save"><i class="ti ti-device-floppy"></i> ${e ? 'حفظ التغييرات' : 'إضافة الموظف'}</button>
+    </div>
+  </div>
+  <div style="max-width:980px;display:flex;flex-direction:column;gap:14px">
+    ${card('الهوية', 'ti-user', `
+      ${g2(
+        `<div class="field"><label>الاسم الكامل *</label><input id="e-name" value="${v('name')}"></div>`,
+        `<div class="field"><label>الاسم (إنجليزي)</label><input id="e-name_en" value="${v('name_en')}"></div>`)}
+      ${g2(
+        `<div class="field"><label>الرقم الوظيفي</label><input id="e-employee_number" value="${v('employee_number')}" placeholder="تلقائي إن تُرك فارغاً"></div>`,
+        `<div class="field"><label>القسم</label><input id="e-department" value="${v('department')}" placeholder="باطنية…"></div>`)}
+      ${g2(
+        `<div class="field"><label>المسمّى الوظيفي</label><input id="e-job_title" value="${v('job_title')}"></div>`,
+        `<div class="field"><label>المسمّى (إنجليزي)</label><input id="e-job_title_en" value="${v('job_title_en')}"></div>`)}
+      ${g2(
+        `<div class="field"><label>الجنس</label><select id="e-gender"><option value="">—</option><option value="male" ${sel('gender', 'male')}>ذكر</option><option value="female" ${sel('gender', 'female')}>أنثى</option></select></div>`,
+        `<div class="field"><label>تاريخ الميلاد</label><input id="e-birth_date" type="date" value="${dv('birth_date')}"></div>`)}
+      ${g2(
+        `<div class="field"><label>الجنسية</label><input id="e-nationality" value="${v('nationality')}"></div>`,
+        `<div class="field" style="margin-bottom:0"><label>الحالة الاجتماعية</label><select id="e-marital_status"><option value="">—</option><option value="single" ${sel('marital_status', 'single')}>أعزب</option><option value="married" ${sel('marital_status', 'married')}>متزوج</option><option value="divorced" ${sel('marital_status', 'divorced')}>مطلّق</option><option value="widowed" ${sel('marital_status', 'widowed')}>أرمل</option></select></div>`)}
+    `)}
+    ${card('التواصل', 'ti-phone', g2(
+      `<div class="field" style="margin-bottom:0"><label>الجوال</label><input id="e-phone" value="${v('phone')}"></div>`,
+      `<div class="field" style="margin-bottom:0"><label>البريد</label><input id="e-email" value="${v('email')}"></div>`))}
+    ${card('الوثائق', 'ti-id', `
+      ${g2(
+        `<div class="field"><label>رقم الهوية</label><input id="e-national_id" value="${v('national_id')}"></div>`,
+        `<div class="field"><label>رقم الجواز</label><input id="e-passport_number" value="${v('passport_number')}"></div>`)}
+      ${g2(
+        `<div class="field"><label>إصدار الهوية</label><input id="e-id_issue_date" type="date" value="${dv('id_issue_date')}"></div>`,
+        `<div class="field"><label>انتهاء الهوية</label><input id="e-id_expiry_date" type="date" value="${dv('id_expiry_date')}"></div>`)}
+      ${g2(
+        `<div class="field"><label>إصدار الجواز</label><input id="e-passport_issue_date" type="date" value="${dv('passport_issue_date')}"></div>`,
+        `<div class="field" style="margin-bottom:0"><label>انتهاء الجواز</label><input id="e-passport_expiry_date" type="date" value="${dv('passport_expiry_date')}"></div>`)}
+    `)}
+    ${card('التوظيف والراتب', 'ti-briefcase', `
+      ${g2(
+        `<div class="field"><label>تاريخ التعيين</label><input id="e-hire_date" type="date" value="${dv('hire_date')}"></div>`,
+        `<div class="field"><label>الحالة</label><select id="e-status"><option value="active" ${sel('status', 'active')}>نشط</option><option value="inactive" ${sel('status', 'inactive')}>موقوف</option></select></div>`)}
+      ${g2(
+        `<div class="field"><label>الراتب الأساسي</label><input id="e-base_salary" type="number" value="${e?.base_salary ?? ''}" placeholder="0"></div>`,
+        `<div class="field"><label>البنك</label><input id="e-bank_name" value="${v('bank_name')}"></div>`)}
+      <div class="field" style="margin-bottom:0"><label>IBAN</label><input id="e-iban" value="${v('iban')}" style="direction:ltr"></div>
+    `)}
+    ${card('ملاحظات', 'ti-note', `<div class="field" style="margin:0"><textarea id="e-notes" rows="3">${v('notes')}</textarea></div>`)}
+    ${!e || !e.user_id ? card('حساب الدخول (اختياري)', 'ti-key', `
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:10px"><input type="checkbox" id="e-create_account" style="width:auto"> إنشاء حساب دخول لهذا الموظف</label>
+      <div id="account-fields" class="hidden">
+        ${g2(
+          `<div class="field"><label>البريد *</label><input id="e-account_email" type="email"></div>`,
+          `<div class="field"><label>كلمة المرور *</label><input id="e-account_password" type="text" placeholder="6 أحرف على الأقل"></div>`)}
+        <div class="field"><label>الدور</label><select id="e-account_role"><option value="staff">موظف (صلاحيات محدّدة)</option><option value="admin">مدير العيادة (كل الصلاحيات)</option></select></div>
+        <div class="field" style="margin:0"><label>الصلاحيات (للموظف)</label><div id="e-perms" style="display:flex;flex-wrap:wrap;gap:7px">${perms.map(([k, lbl]) => `<label class="chip" style="cursor:pointer;display:flex;gap:5px;align-items:center"><input type="checkbox" value="${k}" style="width:auto"> ${lbl}</label>`).join('')}</div></div>
+      </div>
+    `) : ''}
+  </div>`;
+
+  const goBack = () => e ? App.go('employee', e.id) : App.go('staff');
+  el.querySelector('#e-back').onclick = goBack;
+  el.querySelector('#e-cancel2').onclick = goBack;
+  const acc = el.querySelector('#e-create_account');
+  if (acc) acc.onchange = () => el.querySelector('#account-fields').classList.toggle('hidden', !acc.checked);
+  el.querySelector('#e-save').onclick = async (ev) => {
+    const val = (k) => { const n = el.querySelector('#e-' + k); return n ? (n.value.trim?.() ?? n.value) : undefined; };
+    const body = {};
+    ['employee_number', 'name', 'name_en', 'job_title', 'job_title_en', 'department', 'phone', 'email',
+      'national_id', 'id_issue_date', 'id_expiry_date', 'passport_number', 'passport_issue_date', 'passport_expiry_date',
+      'birth_date', 'gender', 'nationality', 'marital_status', 'hire_date', 'base_salary', 'iban', 'bank_name', 'status', 'notes']
+      .forEach((k) => { const x = val(k); if (x !== undefined && x !== '') body[k] = x; });
+    if (!body.name) { toast('اسم الموظف مطلوب', 'err'); return; }
+    if (acc && acc.checked) {
+      body.create_account = true;
+      body.account_email = val('account_email');
+      body.account_password = val('account_password');
+      body.account_role = val('account_role');
+      body.account_permissions = [...el.querySelectorAll('#e-perms input:checked')].map((c) => c.value);
+    }
+    ev.target.disabled = true;
+    try {
+      const r = e ? await API.patch('/admin/employees/' + e.id, body) : await API.post('/admin/employees', body);
+      toast(e ? 'تم حفظ البيانات' : 'تم إضافة الموظف');
+      App.go('employee', r.employee.id);
+    } catch (ex) { toast(ex.message, 'err'); ev.target.disabled = false; }
+  };
+};
+
+// ============ الصيدلية (طلبات الصرف) ============
+Pages.pharmacy = async (el) => {
+  const d = await API.get('/admin/pharmacy');
+  const itemsHtml = (items) => (items || []).map((it) =>
+    `<div style="display:flex;align-items:center;gap:8px;font-size:12.5px;padding:4px 0">
+      <i class="ti ti-pill" style="color:var(--teal)"></i>
+      <span>${esc(it.drug)}${it.dose || it.duration ? ` <span style="color:var(--muted)">· ${esc([it.dose, it.duration].filter(Boolean).join(' · '))}</span>` : ''}</span>
+      ${it.medicine_id ? `<span class="badge b-teal" style="margin-right:auto">من المخزون${it.qty ? ' ×' + it.qty : ''}</span>` : '<span style="margin-right:auto;font-size:11px;color:var(--faint)">يدوي</span>'}
+    </div>`).join('');
+
+  el.innerHTML = `
+  <div class="topbar">
+    <div><h1>الصيدلية</h1><div class="sub">${d.pending.length} طلب صرف بانتظار الصيدلي</div></div>
+  </div>
+  ${d.low_stock.length ? `<div class="card" style="margin-bottom:14px;border-color:var(--warn)">
+    <div class="card-h"><b style="color:var(--warn)"><i class="ti ti-alert-triangle"></i> أدوية منخفضة المخزون</b><span class="badge b-warn">${d.low_stock.length}</span></div>
+    <div class="pad" style="display:flex;flex-wrap:wrap;gap:8px">${d.low_stock.map((m) => `<span class="badge b-warn">${esc(m.name)}: ${m.quantity} ${esc(m.unit || '')}</span>`).join('')}</div>
+  </div>` : ''}
+  <div class="grid2">
+    <div class="card"><div class="card-h"><b>طلبات بانتظار الصرف</b><span class="badge b-teal">${d.pending.length}</span></div>
+      <div class="pad" id="pharm-pending">${d.pending.length ? d.pending.map((o) => `
+        <div class="card" style="margin-bottom:10px;box-shadow:none">
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;border-bottom:1px solid var(--border)">
+            <div class="avatar">${esc(initials(o.patient.name))}</div>
+            <div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:600">${esc(o.patient.name)}</div><div style="font-size:11px;color:var(--muted)">ملف ${esc(o.patient.file_no)}${o.doctor ? ' · طلب: ' + esc(o.doctor.name) : ''} · ${timeAgo(o.created_at)}</div></div>
+          </div>
+          <div class="pad" style="padding:10px 13px">${itemsHtml(o.items)}
+            ${o.note ? `<div style="font-size:12px;color:var(--muted);margin-top:6px"><i class="ti ti-note"></i> ${esc(o.note)}</div>` : ''}
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <button class="btn btn-primary btn-sm" data-dispense="${o.id}"><i class="ti ti-check"></i> صرف الدواء</button>
+              <button class="btn btn-ghost btn-sm" data-cancel="${o.id}">إلغاء الطلب</button>
+            </div>
+          </div>
+        </div>`).join('') : '<div class="empty">لا طلبات صرف معلّقة</div>'}</div>
+    </div>
+    <div class="card"><div class="card-h"><b>آخر ما صُرف</b></div>
+      <div class="pad">${d.recent.length ? d.recent.map((o) => `
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--border)">
+          <div class="avatar" style="width:32px;height:32px;font-size:12px">${esc(initials(o.patient.name))}</div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(o.patient.name)}</div><div style="font-size:11px;color:var(--muted)">${(o.items || []).length} صنف${o.dispenser ? ' · صرف: ' + esc(o.dispenser.name) : ''}</div></div>
+          <span style="font-size:11px;color:var(--faint)">${o.dispensed_at ? timeAgo(o.dispensed_at) : ''}</span>
+        </div>`).join('') : '<div class="empty">لا سجلّ صرف بعد</div>'}</div>
+    </div>
+  </div>`;
+
+  el.querySelectorAll('[data-dispense]').forEach((b) => b.onclick = async () => {
+    b.disabled = true;
+    try { await API.patch('/admin/pharmacy/orders/' + b.dataset.dispense + '/dispense'); toast('تم صرف الدواء وخصم المخزون'); App.loadBadges?.(); App.go('pharmacy'); }
+    catch (ex) { toast(ex.message, 'err'); b.disabled = false; }
+  });
+  el.querySelectorAll('[data-cancel]').forEach((b) => b.onclick = async () => {
+    if (!confirm('إلغاء طلب الصرف؟')) return;
+    try { await API.patch('/admin/pharmacy/orders/' + b.dataset.cancel + '/cancel'); toast('أُلغي الطلب'); App.go('pharmacy'); }
+    catch (ex) { toast(ex.message, 'err'); }
+  });
 };
 
 // ============ الإعدادات ============
@@ -478,7 +638,7 @@ Pages.settings = async (el) => {
       <div class="card"><div class="card-h"><b>التذكيرات والحجز</b></div><div class="pad" style="display:flex;flex-direction:column;gap:11px">
         <label style="display:flex;justify-content:space-between;align-items:center;font-size:13px">تفعيل الحجز الأونلاين <input type="checkbox" id="s-booking" ${s.online_booking === '1' ? 'checked' : ''} style="width:auto"></label>
         <div style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:9px;padding:9px 12px;font-size:12.5px;color:var(--muted)">
-          <i class="ti ti-link"></i> <span style="direction:ltr">${location.origin}/book.html</span>
+          <i class="ti ti-link"></i> <span style="direction:ltr" id="booking-url">${location.origin}/book.html${App.clinic?.slug ? '?c=' + encodeURIComponent(App.clinic.slug) : ''}</span>
           <span style="margin-right:auto;color:var(--teal);font-weight:600;cursor:pointer" id="copy-link">نسخ</span>
         </div>
       </div></div>
@@ -496,7 +656,7 @@ Pages.settings = async (el) => {
       toast('تم حفظ الإعدادات');
     } catch (ex) { toast(ex.message, 'err'); } finally { e.target.disabled = false; }
   };
-  el.querySelector('#copy-link').onclick = () => { navigator.clipboard?.writeText(location.origin + '/book.html'); toast('نُسخ الرابط'); };
+  el.querySelector('#copy-link').onclick = () => { navigator.clipboard?.writeText(el.querySelector('#booking-url').textContent); toast('نُسخ الرابط'); };
   el.querySelector('#add-svc').onclick = () => ServiceForm(null, () => Pages.settings(el));
   el.querySelectorAll('[data-svc]').forEach((r) => r.onclick = () => { const s = svc.services.find((x) => x.id == r.dataset.svc); if (s) ServiceForm(s, () => Pages.settings(el)); });
 };

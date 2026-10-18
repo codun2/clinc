@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\AdminInventoryController;
 use App\Http\Controllers\Api\AdminInvoiceController;
 use App\Http\Controllers\Api\AdminNotificationController;
 use App\Http\Controllers\Api\AdminPatientController;
+use App\Http\Controllers\Api\AdminPharmacyController;
 use App\Http\Controllers\Api\AdminReportController;
 use App\Http\Controllers\Api\AdminServiceController;
 use App\Http\Controllers\Api\AdminSettingController;
@@ -113,6 +114,14 @@ Route::prefix('admin')->group(function () {
             Route::post('inventory', [AdminInventoryController::class, 'store']);
             Route::patch('inventory/{medicine}', [AdminInventoryController::class, 'update']);
             Route::delete('inventory/{medicine}', [AdminInventoryController::class, 'destroy']);
+        });
+
+        // الصيدلية: الطبيب يرسل طلب صرف (perm:consultations)، والصيدلي يصرف (perm:pharmacy)
+        Route::post('pharmacy/orders', [AdminPharmacyController::class, 'store'])->middleware('perm:consultations');
+        Route::middleware('perm:pharmacy')->group(function () {
+            Route::get('pharmacy', [AdminPharmacyController::class, 'index']);
+            Route::patch('pharmacy/orders/{dispenseOrder}/dispense', [AdminPharmacyController::class, 'dispense']);
+            Route::patch('pharmacy/orders/{dispenseOrder}/cancel', [AdminPharmacyController::class, 'cancel']);
         });
 
         // الإعدادات + الخدمات والأسعار

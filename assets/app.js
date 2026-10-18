@@ -26,6 +26,11 @@ const App = {
     document.getElementById('me-name').textContent = u.name;
     document.getElementById('me-role').textContent = u.title || (u.role === 'admin' ? 'مدير العيادة' : 'موظف');
     document.getElementById('brand-clinic').textContent = App.clinic?.name || 'عيادتي';
+    // رابط صفحة الحجز العامة خاص بهذه العيادة (بالـ slug) — لا يفتح عيادة أخرى
+    if (App.clinic?.slug) {
+      const bl = document.getElementById('booking-link');
+      if (bl) bl.href = '/book.html?c=' + encodeURIComponent(App.clinic.slug);
+    }
 
     // إخفاء الأقسام غير المسموح بها
     App.applyPerms();
@@ -49,7 +54,7 @@ const App = {
     const u = App.me;
     const can = (k) => u.role === 'admin' || (u.permissions || []).includes(k);
     const show = { appointments: can('appointments'), patients: can('patients'), invoices: can('invoices'),
-      inventory: can('inventory'), reports: can('invoices'), staff: can('staff'), settings: can('settings') };
+      inventory: can('inventory'), pharmacy: can('pharmacy'), reports: can('invoices'), staff: can('staff'), settings: can('settings') };
     // بوابات الباقة: أخفِ الوحدات التي لا تتيحها باقة العيادة (بلا باقة = كلها متاحة)
     const feats = App.clinic?.features;
     const hasFeat = (f) => !feats || feats.includes(f);
