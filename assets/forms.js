@@ -60,7 +60,7 @@ Pages.consult = async (el, id) => {
       <div id="rx-list"></div>
       <div class="rx sugg" style="border-style:dashed;color:var(--faint);position:relative">
         <i class="ti ti-plus" style="color:var(--faint)"></i>
-        <input id="rx-input" placeholder="أضف دواء…" style="border:none;outline:none;background:transparent;flex:1;font-family:inherit;font-size:13px;color:var(--text)">
+        <input id="rx-input" placeholder="ابحث عن دواء من المخزون أو اكتبه…" style="border:none;outline:none;background:transparent;flex:1;font-family:inherit;font-size:13px;color:var(--text)">
         <span style="font-size:11px">تحقق تلقائي من الحساسية</span>
       </div>
       <button class="btn btn-ghost btn-sm" id="send-pharmacy" style="margin-top:9px;width:100%;justify-content:center"><i class="ti ti-send"></i> إرسال الوصفة للصيدلية</button>
@@ -138,9 +138,42 @@ Pages.consult = async (el, id) => {
   };
   ['#v-bp', '#v-pulse', '#v-temp', '#v-weight', '#c-complaint', '#c-exam', '#c-diag'].forEach((s) => el.querySelector(s).addEventListener('input', saveDraft));
 
-  // إضافة دواء (Enter)
-  el.querySelector('#rx-input').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && e.target.value.trim()) { e.preventDefault(); state.rx.push({ drug: e.target.value.trim() }); e.target.value = ''; renderRx(); saveDraft(); }
+  // منتقي الأدوية: بحث فوق أدوية العيادة (المخزون) + خيار كتابة يدوية في آخر القائمة
+  const rxInput = el.querySelector('#rx-input');
+  let meds = null; // يُجلب مرة واحدة ويُخزّن
+  const ensureMeds = async () => {
+    if (meds) return meds;
+    try { meds = (await API.get('/admin/inventory')).items || []; } catch { meds = []; }
+    return meds;
+  };
+  const addDrug = (name) => { const n = name.trim(); if (!n) return; state.rx.push({ drug: n }); rxInput.value = ''; renderRx(); saveDraft(); hideDrugBox(); };
+  let drugBox;
+  const hideDrugBox = () => { drugBox?.remove(); drugBox = null; };
+  const showDrugBox = async () => {
+    const q = rxInput.value.trim();
+    const list = await ensureMeds();
+    const ql = q.toLowerCase();
+    const matches = q ? list.filter((m) => (m.name || '').toLowerCase().includes(ql)).slice(0, 8)
+      : list.slice(0, 8);
+    const exact = list.some((m) => (m.name || '').toLowerCase() === ql);
+    hideDrugBox();
+    if (!matches.length && !q) return;
+    drugBox = document.createElement('div');
+    drugBox.className = 'sugg-list';
+    drugBox.innerHTML =
+      matches.map((m) => `<div class="sugg-item" data-name="${esc(m.name)}"><i class="ti ti-pill" style="color:var(--teal)"></i> ${esc(m.name)}${m.unit ? ` <span style="color:var(--muted);font-size:11px">· ${esc(m.unit)}</span>` : ''}</div>`).join('')
+      + (q && !exact ? `<div class="sugg-item" data-free="1" style="border-top:1px solid var(--border);color:var(--teal-dark)"><i class="ti ti-plus"></i> إضافة «${esc(q)}» كدواء يدوي</div>` : '')
+      + (!matches.length && !q ? `<div class="sugg-item" style="color:var(--faint)">لا أدوية في المخزون — اكتب اسم الدواء</div>` : '');
+    rxInput.parentElement.appendChild(drugBox);
+    drugBox.querySelectorAll('.sugg-item[data-name]').forEach((it) => it.onmousedown = (ev) => { ev.preventDefault(); addDrug(it.dataset.name); });
+    drugBox.querySelectorAll('.sugg-item[data-free]').forEach((it) => it.onmousedown = (ev) => { ev.preventDefault(); addDrug(q); });
+  };
+  rxInput.addEventListener('focus', showDrugBox);
+  rxInput.addEventListener('input', showDrugBox);
+  rxInput.addEventListener('blur', () => setTimeout(hideDrugBox, 180));
+  rxInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.value.trim()) { e.preventDefault(); addDrug(e.target.value); }
+    else if (e.key === 'Escape') hideDrugBox();
   });
   el.querySelector('#order-input').addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && e.target.value.trim()) { e.preventDefault(); state.orders.push(e.target.value.trim()); e.target.value = ''; renderOrders(); saveDraft(); }
