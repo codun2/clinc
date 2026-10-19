@@ -324,6 +324,7 @@ async function ClinicForm(c = null) {
           <div class="field"><label>بريد الدخول</label><input id="c-admin-email" value="${v('admin_email')}" type="email" style="direction:ltr"></div>
           <div class="field"><label>كلمة مرور جديدة</label><input id="c-admin-pass" type="text" placeholder="اتركها فارغة لعدم التغيير"></div>
         </div>
+        <div class="field" style="margin:0"><label>تخصص المدير الطبي (يجعله طبيباً في صفحة الحجز)</label><input id="c-admin-title" value="${v('admin_title')}" placeholder="مثال: طبيب أسنان — اتركه فارغاً إن لم يكن طبيباً"></div>
       </div>
     ` : `
       <div class="field"><label>اسم العيادة *</label><input id="c-name" placeholder="عيادة ..."></div>
@@ -333,6 +334,7 @@ async function ClinicForm(c = null) {
         <div class="field"><label>بريد المدير *</label><input id="c-email" type="email"></div>
         <div class="field"><label>كلمة المرور *</label><input id="c-pass" type="text" placeholder="6 أحرف على الأقل"></div>
       </div>
+      <div class="field"><label>تخصص المدير الطبي (اختياري)</label><input id="c-admin-title" placeholder="مثال: طبيب أسنان — يجعله طبيباً يظهر في صفحة الحجز"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
         <div class="field" style="margin:0"><label>الباقة *</label><select id="c-plan">${planOpts}</select></div>
         <div class="field" style="margin:0"><label>الحالة</label>
@@ -355,6 +357,8 @@ async function ClinicForm(c = null) {
             const ap = root.querySelector('#c-admin-pass')?.value.trim();
             if (ae) body.admin_email = ae;
             if (ap) body.admin_password = ap;
+            // المسمّى يُرسَل دائماً (حتى فارغاً لإزالته)
+            body.admin_title = root.querySelector('#c-admin-title')?.value.trim() || '';
             await SAPI.patch('/super/clinics/' + c.id, body);
             toast(ap ? 'تم حفظ العيادة وتحديث كلمة المرور' : 'تم حفظ العيادة');
           } else {
@@ -362,6 +366,7 @@ async function ClinicForm(c = null) {
               name: root.querySelector('#c-name').value, admin_name: root.querySelector('#c-admin').value,
               admin_email: root.querySelector('#c-email').value, admin_phone: root.querySelector('#c-phone').value || null,
               admin_password: root.querySelector('#c-pass').value, status: root.querySelector('#c-status').value,
+              admin_title: root.querySelector('#c-admin-title')?.value.trim() || null,
               plan_id: root.querySelector('#c-plan').value || null,
             });
             toast('تم إنشاء العيادة');

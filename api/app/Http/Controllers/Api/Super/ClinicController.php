@@ -23,8 +23,14 @@ class ClinicController extends Controller
         $clinics = Clinic::query()
             ->when($request->query('status'), fn ($q, $s) => $q->where('status', $s))
             ->with('plan:id,name,slug,max_doctors,max_users')
-            // بريد دخول المدير الأساسي (لعرضه/تعديله من لوحة السوبر)
+            // بريد ومسمّى المدير الأساسي (لعرضه/تعديله من لوحة السوبر)
             ->addSelect(['admin_email' => User::select('email')
+                ->whereColumn('users.clinic_id', 'clinics.id')
+                ->where('role', 'admin')
+                ->orderBy('id')
+                ->limit(1),
+            ])
+            ->addSelect(['admin_title' => User::select('title')
                 ->whereColumn('users.clinic_id', 'clinics.id')
                 ->where('role', 'admin')
                 ->orderBy('id')
@@ -52,6 +58,8 @@ class ClinicController extends Controller
             'admin_email'   => ['required', 'email', 'max:150', 'unique:users,email'],
             'admin_phone'   => ['nullable', 'string', 'max:30'],
             'admin_password'=> ['required', Password::min(6)],
+            // مسمّى المدير الطبي (اختياري) — يجعله طبيباً يظهر في صفحة الحجز
+            'admin_title'   => ['nullable', 'string', 'max:80'],
             'status'        => ['nullable', 'in:pending,active,suspended'],
             'plan_id'       => ['nullable', 'exists:plans,id'],
         ]);
@@ -72,6 +80,7 @@ class ClinicController extends Controller
                 'email'     => $data['admin_email'],
                 'phone'     => $data['admin_phone'] ?? null,
                 'role'      => 'admin',
+                'title'     => $data['admin_title'] ?? null,
                 'password'  => $data['admin_password'],
             ]);
 
@@ -92,23 +101,30 @@ class ClinicController extends Controller
             'email'   => ['sometimes', 'nullable', 'email', 'max:150'],
             'address' => ['sometimes', 'nullable', 'string', 'max:200'],
             'plan_id' => ['sometimes', 'nullable', 'exists:plans,id'],
-            // بيانات دخول المدير (اختيارية) — لإنشاء/إعادة ضبط كلمة المرور
+            // بيانات دخول المدير (اختيارية) — لإنشاء/إعادة ضبط كلمة المرور/المسمّى
             'admin_name'     => ['sometimes', 'nullable', 'string', 'max:100'],
             'admin_email'    => ['sometimes', 'nullable', 'email', 'max:150', Rule::unique('users', 'email')->ignore($admin?->id)],
             'admin_password' => ['sometimes', 'nullable', Password::min(6)],
+            // المسمّى الطبي للمدير — فارغ يزيله (يُخرجه من قائمة أطباء الحجز)
+            'admin_title'    => ['sometimes', 'nullable', 'string', 'max:80'],
         ]);
 
-        DB::transaction(function () use ($data, $clinic, $admin) {
+        DB::transaction(function () use ($request, $data, $clinic, $admin) {
             $clinic->update(collect($data)->only(['name', 'phone', 'email', 'address', 'plan_id'])->all());
 
-            // إعادة ضبط / إنشاء حساب دخول المدير
-            if (! empty($data['admin_password']) || ! empty($data['admin_email'])) {
+            $touchAdmin = ! empty($data['admin_password']) || ! empty($data['admin_email']) || $request->has('admin_title');
+            if ($touchAdmin) {
                 if ($admin) {
-                    $admin->update(array_filter([
+                    $upd = array_filter([
                         'name'     => $data['admin_name'] ?? null,
                         'email'    => $data['admin_email'] ?? null,
                         'password' => $data['admin_password'] ?? null,
-                    ], fn ($v) => $v !== null && $v !== ''));
+                    ], fn ($v) => $v !== null && $v !== '');
+                    // المسمّى يُحدَّث حتى لو فارغاً (لإزالته) متى أُرسل الحقل
+                    if ($request->has('admin_title')) {
+                        $upd['title'] = $data['admin_title'] ?: null;
+                    }
+                    $admin->update($upd);
                 } elseif (! empty($data['admin_email']) && ! empty($data['admin_password'])) {
                     // عيادة بلا مدير → أنشئ واحداً
                     User::create([
@@ -117,6 +133,7 @@ class ClinicController extends Controller
                         'email'     => $data['admin_email'],
                         'role'      => 'admin',
                         'status'    => 'active',
+                        'title'     => $data['admin_title'] ?? null,
                         'password'  => $data['admin_password'],
                     ]);
                 }

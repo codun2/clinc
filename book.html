@@ -30,11 +30,12 @@
 <script src="/assets/api.js"></script>
 <script src="/assets/i18n.js"></script>
 <script>
-const SLUG = new URLSearchParams(location.search).get('c') || 'alnoor';
+const SLUG = new URLSearchParams(location.search).get('c');
 const LOC = I18N.lang === 'en' ? 'en-GB' : 'ar-SA-u-ca-gregory-nu-latn';
 const S = { department: '', doctor_id: '', doctor_name: '', date: new Date(Date.now() + 86400000).toISOString().slice(0, 10), time: '', info: null };
 
 async function boot() {
+  if (!SLUG) { document.getElementById('content').innerHTML = '<div class="empty">لم تُحدَّد العيادة في الرابط. استخدم رابط الحجز الخاص بعيادتك (…/book.html?c=معرّف-العيادة).</div>'; return; }
   try { S.info = await API.get('/booking/' + SLUG + '/info'); }
   catch { document.getElementById('content').innerHTML = '<div class="empty">تعذّر تحميل صفحة الحجز</div>'; return; }
   document.getElementById('clinic-name').textContent = S.info.clinic.name;
